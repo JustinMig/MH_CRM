@@ -1,1 +1,1 @@
-{"name":"M&H CRM","short_name":"M&H CRM","start_url":"/#/dashboard","display":"standalone","background_color":"#07131c","theme_color":"#0d1b27","description":"Standalone CRM for M&H Insurance Group"}
+{"name":"M&H CRM","short_name":"M&H CRM","start_url":"/#/dashboard","display":"standalone","background_color":"#07131c","theme_color":"#0d1b27","description":"Standalone CRM for M&H Insurance Group","icons":[{"src":"/assets/mh-logo.jpg?v=2","sizes":"256x256","type":"image/jpeg","purpose":"any maskable"}]}
