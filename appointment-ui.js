@@ -14,20 +14,26 @@ export function installAppointmentSingleAgent(root, repository) {
     if (!form?.isConnected || form.dataset.singleAgentAppointment === 'true') return;
     form.dataset.singleAgentAppointment = 'true';
 
-    // Current M&H setup has one agent. The repository assigns the signed-in
-    // user automatically when this field is absent, so remove the selector.
+    // M&H is currently a single-agent setup. Remove the visible selector;
+    // saveEvent automatically assigns the signed-in user when this value is absent.
     const agent = form.elements.namedItem('assigned_agent_id');
-    if (agent) agent.closest('.field')?.remove();
+    if (agent) {
+      const field = agent.closest('.field');
+      if (field) field.remove();
+      else agent.remove();
+    }
 
-    // Keep the CRM's existing MM/DD/YYYY field internally so its save/date
-    // validation code stays unchanged, while showing a native calendar picker.
+    // Replace the appointment's manual date input with the device/browser
+    // native calendar picker while preserving the CRM's existing save format.
     const rawDate = form.elements.namedItem('event_date');
     if (!rawDate || rawDate.dataset.nativeCalendar === 'true') return;
     rawDate.dataset.nativeCalendar = 'true';
 
     const initial = toISO(rawDate.value);
+    const field = rawDate.closest('.field');
     rawDate.type = 'hidden';
     rawDate.hidden = true;
+    rawDate.required = false;
 
     const picker = document.createElement('input');
     picker.type = 'date';
@@ -35,25 +41,32 @@ export function installAppointmentSingleAgent(root, repository) {
     picker.value = initial;
     picker.className = 'appointment-native-date';
     picker.setAttribute('aria-label', 'Appointment Date');
+    picker.setAttribute('name', 'appointment_date_picker');
     rawDate.insertAdjacentElement('afterend', picker);
 
-    picker.addEventListener('change', () => {
+    // Keep the original label around the new picker so it still reads
+    // Appointment Date and retains the same layout.
+    if (field) field.classList.add('appointment-date-field');
+
+    const sync = () => {
       rawDate.value = toDisplay(picker.value);
       rawDate.dispatchEvent(new Event('input', { bubbles: true }));
       rawDate.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    };
+    picker.addEventListener('change', sync);
+    picker.addEventListener('input', sync);
   }
 
   const scan = () => {
-    root.querySelectorAll('form.appointment-form').forEach(form => {
+    // Dialogs are appended to document.body, not inside #app/root.
+    document.querySelectorAll('form.appointment-form').forEach(form => {
       if (form.dataset.singleAgentAppointmentScheduled === 'true') return;
       form.dataset.singleAgentAppointmentScheduled = 'true';
-      // Let the appointment builder finish setting its default date and
-      // attaching validation listeners before replacing the visible control.
       setTimeout(() => enhance(form), 0);
     });
   };
 
   scan();
-  new MutationObserver(scan).observe(root, { childList: true, subtree: true });
+  const observer = new MutationObserver(scan);
+  observer.observe(document.body, { childList: true, subtree: true });
 }
