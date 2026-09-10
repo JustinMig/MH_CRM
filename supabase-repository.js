@@ -29,8 +29,20 @@ export const mhRepository = {
     return true;
   },
   async signIn(email, password) { const { data, error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error; return data; },
-  async signUp(fullName, email, password) { const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } }); if (error) throw error; return data; },
   async signOut() { await supabase.auth.signOut(); location.reload(); },
+  async listUsers() {
+    const { data, error } = await supabase.from('profiles').select('id,full_name,role,active,created_at').order('full_name');
+    if (error) throw error;
+    return data || [];
+  },
+  async inviteUser({ full_name, email, role }) {
+    const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: { full_name, email, role } });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    const users = await this.listUsers();
+    this.agents.splice(0, this.agents.length, ...users.filter(user => user.active));
+    return data;
+  },
 
   async searchClients({ query = '', product = '', agent = '', birthYear = '', limit = 50 }) {
     let q = supabase.from('clients').select('id,first_name,last_name,phone,email,date_of_birth,products,assigned_agent_id,updated_at').order('last_name').order('first_name').limit(limit);
