@@ -2,6 +2,7 @@ import { createWorkspace } from './workspace.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 import { installAdminUsers } from './admin-users.js';
 import { installPullToRefresh } from './pull-to-refresh.js';
+import { installDashboardCleanup } from './dashboard-cleanup.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -66,6 +67,7 @@ function authScreen(message = '') {
     try {
       const data = new FormData(form);
       await mhRepository.signIn(String(data.get('email') || '').trim(), String(data.get('password') || ''));
+      location.hash = '#/dashboard';
       location.reload();
     } catch (error) {
       authScreen(`<b>Sign in failed:</b> ${error.message || 'Please check your email and password.'}`);
@@ -78,7 +80,9 @@ async function start() {
   try {
     const signedIn = await mhRepository.initialize();
     if (!signedIn) { authScreen(); return; }
+    if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
     createWorkspace(root, mhRepository);
+    installDashboardCleanup(root);
     installAdminUsers(root, mhRepository);
     applyCurrentUserToClientSearch();
   } catch (error) {
