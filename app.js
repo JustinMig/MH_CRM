@@ -3,6 +3,7 @@ import { mhRepository, supabase } from './supabase-repository.js';
 import { installAdminUsers } from './admin-users.js';
 import { installPullToRefresh } from './pull-to-refresh.js';
 import { installDashboardCleanup } from './dashboard-cleanup.js';
+import { installAppointmentSingleAgent } from './appointment-ui.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -83,6 +84,7 @@ async function start() {
     if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
     createWorkspace(root, mhRepository);
     installDashboardCleanup(root);
+    installAppointmentSingleAgent(root, mhRepository);
     installAdminUsers(root, mhRepository);
     applyCurrentUserToClientSearch();
   } catch (error) {
