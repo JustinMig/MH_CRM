@@ -1,0 +1,7 @@
+/* M&H CRM current single-user client-search layout.
+   Justin Mayer is the only active CRM user at this time, so the Agent filter is unnecessary. */
+#client-search .field:has(select[name="agent"]){display:none!important}
+
+@supports not selector(:has(*)){
+  #client-search select[name="agent"]{display:none!important}
+}
