@@ -245,11 +245,20 @@ function bindDocumentPanel(dialog, clientId) {
 function bindNewDialog(dialog) {
   if (!(dialog instanceof HTMLDialogElement) || !dialog.classList.contains('client-dialog')) return;
   const clientId = dialog.dataset.clientId || pendingClientId;
+  const panel = dialog.querySelector('[data-panel="documents"]');
+
+  // Existing-client dialogs are inserted before their async client form finishes
+  // rendering. Wait until the Documents panel actually exists, then replace the
+  // old placeholder with the live secure storage manager.
+  if (!panel) return;
+
   if (!clientId) {
-    const panel = dialog.querySelector('[data-panel="documents"]');
-    if (panel) panel.innerHTML = '<div class="panel-card"><h3>Secure Documents</h3><p class="subtle">Save this new client first, then reopen the client record to upload secure documents.</p></div>';
+    if (dialog.dataset.newClientDocumentsReady === 'true') return;
+    dialog.dataset.newClientDocumentsReady = 'true';
+    panel.innerHTML = '<div class="panel-card"><h3>Secure Documents</h3><p class="subtle">Save this new client first, then reopen the client record to upload secure documents.</p></div>';
     return;
   }
+
   dialog.dataset.clientId = clientId;
   bindDocumentPanel(dialog, clientId);
 }
@@ -263,10 +272,19 @@ document.addEventListener('click', event => {
 
 const observer = new MutationObserver(mutations => {
   for (const mutation of mutations) {
+    const mutationDialog = mutation.target instanceof Element ? mutation.target.closest?.('dialog.client-dialog') : null;
+    if (mutationDialog) bindNewDialog(mutationDialog);
+
     for (const node of mutation.addedNodes) {
       if (!(node instanceof Element)) continue;
+
       if (node.matches('dialog.client-dialog')) bindNewDialog(node);
       node.querySelectorAll?.('dialog.client-dialog').forEach(bindNewDialog);
+
+      // Most importantly, rerun binding when the asynchronously loaded client
+      // form/panels are inserted inside an already-open client dialog.
+      const parentDialog = node.closest?.('dialog.client-dialog');
+      if (parentDialog) bindNewDialog(parentDialog);
     }
   }
 });
