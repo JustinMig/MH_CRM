@@ -38,11 +38,17 @@ export function installCarrierVault(root) {
   let token = 0;
   let rendering = false;
 
-  const draw = async () => {
+  const draw = async (force = false) => {
     if (rendering || route() !== 'carriers') return;
     const content = root.querySelector('.content');
     const heading = content?.querySelector(':scope > .page-heading');
     if (!content || !heading) return;
+
+    // If the Carriers screen is already mounted, do not rebuild it just because
+    // something inside the page changed. Rebuilding on every DOM mutation was
+    // what caused the navigation to feel like it was sticking.
+    if (!force && content.querySelector(':scope > .carrier-vault')) return;
+
     rendering = true;
     const myToken = ++token;
     Array.from(content.children).forEach(node => { if (node !== heading) node.remove(); });
@@ -81,15 +87,15 @@ export function installCarrierVault(root) {
         input.type = show ? 'text' : 'password';
         e.currentTarget.textContent = show ? 'Hide' : 'Show';
       };
-      dialog.querySelector('[data-delete-carrier]')?.addEventListener('click', async () => {
-        if (!confirm(`Delete ${record.carrier_name}?`)) return;
-        try { await deleteCarrier(record.id); dialog.close(); await draw(true); } catch (error) { showError(error); }
-      });
       const showError = error => {
         const box = dialog.querySelector('.carrier-form-error');
         box.hidden = false;
         box.textContent = error?.message || 'Unable to save this carrier.';
       };
+      dialog.querySelector('[data-delete-carrier]')?.addEventListener('click', async () => {
+        if (!confirm(`Delete ${record.carrier_name}?`)) return;
+        try { await deleteCarrier(record.id); dialog.close(); await draw(true); } catch (error) { showError(error); }
+      });
       form.onsubmit = async e => {
         e.preventDefault();
         if (!form.reportValidity()) return;
@@ -140,9 +146,14 @@ export function installCarrierVault(root) {
     } finally { rendering = false; }
   };
 
-  const observer = new MutationObserver(() => { if (route() === 'carriers') draw(); });
-  observer.observe(root, { childList:true, subtree:true });
-  window.addEventListener('hashchange', draw);
+  // Workspace navigation replaces the direct children of #app when routes change.
+  // Watch only that level so edits inside the Carriers page cannot recursively
+  // trigger another full redraw.
+  const observer = new MutationObserver(() => {
+    if (route() === 'carriers') queueMicrotask(() => draw());
+  });
+  observer.observe(root, { childList:true });
+  window.addEventListener('hashchange', () => queueMicrotask(() => draw()));
   draw();
-  return () => { observer.disconnect(); window.removeEventListener('hashchange', draw); };
+  return () => observer.disconnect();
 }
