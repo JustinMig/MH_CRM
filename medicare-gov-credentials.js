@@ -8,36 +8,51 @@ function groupBySummary(panel, title) {
     .find(group => group.querySelector(':scope > summary')?.textContent.trim() === title) || null;
 }
 
-function moveSocialIntoPersonal(form) {
+function keepSocialVisible(form) {
   const information = form.querySelector('[data-panel="information"]');
   if (!information) return;
   const personal = groupBySummary(information, 'Personal & Contact Information');
   const ssn = form.elements.namedItem('ssn');
   const ssnField = ssn?.closest?.('label.field');
   if (!personal || !ssnField) return;
-  const grid = personal.querySelector(':scope > .form-grid');
-  if (!grid || ssnField.parentElement === grid) return;
-  const phoneField = form.elements.namedItem('phone')?.closest?.('label.field');
-  if (phoneField?.parentElement === grid) phoneField.insertAdjacentElement('afterend', ssnField);
-  else grid.append(ssnField);
+
+  let visible = information.querySelector('[data-client-social-visible]');
+  if (!visible) {
+    visible = document.createElement('div');
+    visible.className = 'client-social-visible';
+    visible.dataset.clientSocialVisible = 'true';
+    visible.innerHTML = '<div class="client-social-visible-title">Social Security Number</div>';
+    personal.insertAdjacentElement('beforebegin', visible);
+  }
+
+  if (ssnField.parentElement !== visible) visible.append(ssnField);
+  const labelText = ssnField.querySelector(':scope > span');
+  if (labelText) labelText.textContent = 'Social Security Number';
+  ssn.type = 'text';
+  ssn.autocomplete = 'off';
 }
 
 function credentialMarkup() {
-  return `<section class="medicare-gov-credentials span-all" data-medicare-gov-credentials>
-    <div class="medicare-gov-heading">
-      <div><strong>Medicare.gov Login Credentials</strong><span>Encrypted secure storage</span></div>
-      <span class="secure-badge" aria-label="Stored encrypted">SECURE</span>
+  return `<details class="field-group medicare-gov-credentials-group" data-medicare-gov-credentials-group>
+    <summary>Medicare.gov Login Credentials</summary>
+    <div class="form-grid">
+      <section class="medicare-gov-credentials span-all" data-medicare-gov-credentials>
+        <div class="medicare-gov-heading">
+          <div><strong>Medicare.gov Login Credentials</strong><span>Encrypted secure storage</span></div>
+          <span class="secure-badge" aria-label="Stored encrypted">SECURE</span>
+        </div>
+        <div class="medicare-gov-grid">
+          <label class="field"><span>Username</span><input name="medicare_gov_username" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <label class="field"><span>Password</span><input name="medicare_gov_password" type="text" autocomplete="off" spellcheck="false"></label>
+          <label class="field"><span>Verification Type</span><select name="medicare_gov_verification_type"><option value="">Select…</option><option value="text">Text</option><option value="email">Email</option></select></label>
+          <label class="field" data-verification-field="text" hidden><span>Verification Phone Number</span><input name="medicare_gov_verification_phone" type="tel" placeholder="(###) ###-####"></label>
+          <label class="field" data-verification-field="email" hidden><span>Verification Email</span><input name="medicare_gov_verification_email" type="email" inputmode="email"></label>
+          <label class="field span-all"><span>Security Answer</span><input name="medicare_gov_security_answer" type="text" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <div class="medicare-gov-status" data-medicare-gov-status role="status" aria-live="polite">Credentials are encrypted when saved.</div>
+      </section>
     </div>
-    <div class="medicare-gov-grid">
-      <label class="field"><span>Username</span><input name="medicare_gov_username" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-      <label class="field"><span>Password</span><input name="medicare_gov_password" type="password" autocomplete="new-password"></label>
-      <label class="field"><span>Verification Type</span><select name="medicare_gov_verification_type"><option value="">Select…</option><option value="text">Text</option><option value="email">Email</option></select></label>
-      <label class="field" data-verification-field="text" hidden><span>Verification Phone Number</span><input name="medicare_gov_verification_phone" type="tel" placeholder="(###) ###-####"></label>
-      <label class="field" data-verification-field="email" hidden><span>Verification Email</span><input name="medicare_gov_verification_email" type="email" inputmode="email"></label>
-      <label class="field span-all"><span>Security Answer</span><input name="medicare_gov_security_answer" type="password" autocomplete="new-password"></label>
-    </div>
-    <div class="medicare-gov-status" data-medicare-gov-status role="status" aria-live="polite">Credentials are encrypted when saved.</div>
-  </section>`;
+  </details>`;
 }
 
 function setVerificationVisibility(form, clearInactive = false) {
@@ -59,15 +74,15 @@ function setVerificationVisibility(form, clearInactive = false) {
 
 function enhanceCredentialForm(form) {
   if (!(form instanceof HTMLFormElement)) return;
-  moveSocialIntoPersonal(form);
-  if (form.querySelector('[data-medicare-gov-credentials]')) return;
+  keepSocialVisible(form);
+  if (form.querySelector('[data-medicare-gov-credentials-group]')) return;
   const panel = form.querySelector('[data-panel="medicare"]');
   const medicare = panel ? groupBySummary(panel, 'Medicare Information') : null;
-  const grid = medicare?.querySelector(':scope > .form-grid');
-  if (!grid) return;
+  if (!panel || !medicare) return;
   const holder = document.createElement('div');
   holder.innerHTML = credentialMarkup();
-  grid.append(holder.firstElementChild);
+  const group = holder.firstElementChild;
+  medicare.insertAdjacentElement('afterend', group);
   const type = form.elements.namedItem('medicare_gov_verification_type');
   type?.addEventListener('change', () => setVerificationVisibility(form, true));
   setVerificationVisibility(form, false);
