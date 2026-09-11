@@ -1,0 +1,137 @@
+[data-panel="life"] .life-policy-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+[data-panel="life"] .life-policy-toolbar h3 {
+  margin: 0 0 4px;
+}
+
+[data-panel="life"] .life-policy-toolbar p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+[data-panel="life"] .life-policy-list {
+  display: grid;
+  gap: 10px;
+}
+
+[data-panel="life"] .life-policy-card {
+  overflow: hidden;
+  border: 1px solid rgba(138,129,120,.55);
+  border-radius: 13px;
+  background: #fffdf8;
+  box-shadow: 0 3px 10px rgba(45,39,32,.08);
+}
+
+[data-panel="life"] .life-policy-card > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 11px 16px;
+  cursor: pointer;
+  list-style: none;
+  background: #d9eaf7;
+  color: #102a43;
+}
+
+[data-panel="life"] .life-policy-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+[data-panel="life"] .life-policy-card[open] > summary {
+  border-bottom: 1px solid rgba(138,129,120,.45);
+  background: #c6e0f3;
+}
+
+[data-panel="life"] .life-policy-summary-text {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+[data-panel="life"] .life-policy-summary-text strong {
+  overflow: hidden;
+  color: #102a43;
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-panel="life"] .life-policy-summary-text small {
+  overflow: hidden;
+  color: #486581;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-panel="life"] .life-policy-chevron {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #7897ad;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  transition: transform .15s ease;
+}
+
+[data-panel="life"] .life-policy-card[open] .life-policy-chevron {
+  transform: rotate(180deg);
+}
+
+[data-panel="life"] .life-policy-body {
+  padding: 15px;
+  background: #fffdf8;
+}
+
+[data-panel="life"] .life-policy-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+[data-panel="life"] .life-policy-remove {
+  min-width: 130px;
+}
+
+[data-panel="life"] .life-policy-status {
+  margin: 11px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  [data-panel="life"] .life-policy-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  [data-panel="life"] .life-policy-toolbar .btn {
+    width: 100%;
+  }
+
+  [data-panel="life"] .life-policy-card > summary {
+    padding: 10px 12px;
+  }
+
+  [data-panel="life"] .life-policy-body {
+    padding: 12px;
+  }
+}
