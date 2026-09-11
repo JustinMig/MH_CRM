@@ -1,0 +1,193 @@
+/* Dashboard calendar viewport fitting.
+   The dashboard calendar uses the exact visible space left on the current screen,
+   so the full month remains visible without needing to scroll. */
+.dashboard-fit-content > .page-heading {
+  margin-bottom: clamp(8px, 1.5vh, 18px);
+}
+.dashboard-fit-content > .framework-banner {
+  margin-bottom: clamp(8px, 1.5vh, 18px);
+  padding-top: clamp(7px, 1vh, 11px);
+  padding-bottom: clamp(7px, 1vh, 11px);
+}
+
+.dashboard-calendar-host {
+  height: var(--dashboard-calendar-fit-height, calc(100dvh - 210px));
+  min-height: 0;
+}
+.dashboard-calendar-host .dashboard-calendar {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(5px, 1vh, 12px);
+}
+.dashboard-calendar-host .calendar-queues {
+  margin: 0;
+  gap: clamp(6px, .8vw, 12px);
+}
+.dashboard-calendar-host .today-queue,
+.dashboard-calendar-host .reschedule-queue {
+  min-height: clamp(38px, 5.2vh, 52px);
+  padding: clamp(6px, 1.2vh, 15px) clamp(8px, 1.3vw, 18px);
+}
+.dashboard-calendar-host .calendar-card {
+  height: 100%;
+  min-height: 0;
+  padding: clamp(7px, 1.45vh, 16px);
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+.dashboard-calendar-host .calendar-head {
+  min-height: 0;
+  gap: clamp(5px, .9vh, 12px);
+}
+.dashboard-calendar-host .calendar-legend {
+  margin-top: clamp(1px, .55vh, 6px);
+}
+.dashboard-calendar-host .calendar-actions .btn {
+  min-height: clamp(30px, 4vh, 34px);
+  padding-top: clamp(4px, .7vh, 7px);
+  padding-bottom: clamp(4px, .7vh, 7px);
+}
+.dashboard-calendar-host .calendar-month {
+  margin: clamp(3px, 1vh, 12px) 0;
+  font-size: clamp(14px, 2vh, 17px);
+  line-height: 1.1;
+}
+.dashboard-calendar-host .calendar-status {
+  margin: 0 0 clamp(3px, .8vh, 10px);
+  line-height: 1.25;
+}
+.dashboard-calendar-host .calendar-grid {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(0, 1fr);
+}
+.dashboard-calendar-host .calendar-weekday {
+  padding-top: clamp(3px, .8vh, 8px);
+  padding-bottom: clamp(3px, .8vh, 8px);
+}
+.dashboard-calendar-host .calendar-day {
+  min-height: 0 !important;
+  height: auto;
+  overflow: hidden;
+  padding: clamp(2px, .65vh, 6px);
+}
+.dashboard-calendar-host .day-events {
+  min-height: 0;
+  overflow: hidden;
+}
+.dashboard-calendar-host .calendar-event {
+  min-height: 0;
+  padding: clamp(2px, .45vh, 4px) 5px;
+}
+
+/* Short screens trade full event text for dots, while preserving every date cell. */
+@media (max-height: 760px) {
+  .dashboard-fit-content > .page-heading {
+    margin-bottom: 8px;
+  }
+  .dashboard-fit-content > .page-heading h1 {
+    font-size: 21px;
+    margin-top: 0;
+  }
+  .dashboard-fit-content > .page-heading .eyebrow {
+    display: none;
+  }
+  .dashboard-fit-content > .framework-banner {
+    margin-bottom: 8px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .dashboard-calendar-host .calendar-event:nth-child(n+2) {
+    display: none;
+  }
+  .dashboard-calendar-host .calendar-day {
+    padding: 3px;
+  }
+}
+
+@media (max-height: 650px) {
+  .dashboard-calendar-host .calendar-legend,
+  .dashboard-calendar-host .calendar-status {
+    display: none;
+  }
+  .dashboard-calendar-host .day-events {
+    display: none;
+  }
+  .dashboard-calendar-host .day-dots {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 3px;
+    min-height: 6px;
+  }
+  .dashboard-calendar-host .day-dots i {
+    width: 5px;
+    height: 5px;
+  }
+  .dashboard-calendar-host .calendar-weekday {
+    padding: 3px 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-calendar-host .calendar-card {
+    padding: clamp(6px, 1.1vh, 10px);
+  }
+  .dashboard-calendar-host .calendar-queues {
+    gap: 6px;
+  }
+  .dashboard-calendar-host .today-queue,
+  .dashboard-calendar-host .reschedule-queue {
+    min-height: clamp(36px, 5.2vh, 46px);
+    padding: 5px 4px;
+  }
+  .dashboard-calendar-host .calendar-head {
+    gap: 5px;
+  }
+  .dashboard-calendar-host .calendar-actions {
+    gap: 4px;
+  }
+  .dashboard-calendar-host .calendar-actions .btn {
+    min-height: 30px;
+    padding: 4px 6px;
+  }
+  .dashboard-calendar-host .calendar-controls {
+    gap: 3px;
+  }
+  .dashboard-calendar-host .calendar-month {
+    margin: 3px 0;
+  }
+  .dashboard-calendar-host .calendar-status {
+    margin-bottom: 3px;
+  }
+  .dashboard-calendar-host .calendar-day {
+    min-height: 0 !important;
+    padding: 2px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-fit-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .dashboard-fit-content > .page-heading {
+    gap: 7px;
+  }
+  .dashboard-fit-content > .page-heading h1 {
+    font-size: 19px;
+  }
+  .dashboard-fit-content > .page-heading .btn {
+    min-height: 36px;
+    padding: 7px 9px;
+  }
+  .dashboard-calendar-host .calendar-weekday {
+    font-size: 9px;
+  }
+  .dashboard-calendar-host .day-number {
+    font-size: 12px;
+  }
+}
