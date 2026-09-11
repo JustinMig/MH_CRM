@@ -2,6 +2,7 @@ import { supabase } from './supabase-repository.js';
 
 const BUCKET = 'mh-client-documents';
 const MAX_BYTES = 25 * 1024 * 1024;
+const MEDICARE_CATEGORIES = new Set(['medicare_card','medicaid_card','health_plan_card','soa','scope_of_appointment','medicare_photo','card_information']);
 const ALLOWED = new Set([
   'application/pdf',
   'image/jpeg',
@@ -54,7 +55,7 @@ async function listDocuments(clientId) {
     .eq('client_id', clientId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).filter(row => !MEDICARE_CATEGORIES.has(String(row.category || '').toLowerCase()));
 }
 
 async function uploadDocument(clientId, file, category) {
@@ -107,16 +108,14 @@ function documentPanelMarkup() {
       <div class="document-manager-head">
         <div>
           <h3>Secure Documents</h3>
-          <p>Files are stored in the private M&amp;H document vault and require an authenticated CRM login to access.</p>
+          <p>General client files are stored here. Medicare, Medicaid, Health Plan cards and SOAs are managed inside the Medicare tab.</p>
         </div>
       </div>
       <div class="document-upload-card">
         <label class="document-category"><span>Document Type</span>
           <select data-doc-category>
             <option value="other">Other</option>
-            <option value="medicare_card">Medicare Card</option>
             <option value="insurance_policy">Insurance Policy</option>
-            <option value="soa">Scope of Appointment</option>
             <option value="application">Application</option>
             <option value="id">Identification</option>
           </select>
@@ -154,7 +153,7 @@ function bindDocumentPanel(dialog, clientId) {
 
   const render = () => {
     if (!records.length) {
-      list.innerHTML = '<div class="document-empty"><strong>No documents uploaded yet.</strong><span>Use the secure upload box above to add this client’s first document.</span></div>';
+      list.innerHTML = '<div class="document-empty"><strong>No general documents uploaded yet.</strong><span>Use the secure upload box above to add a client document.</span></div>';
       return;
     }
     list.innerHTML = records.map(record => `
@@ -203,7 +202,7 @@ function bindDocumentPanel(dialog, clientId) {
       records = await listDocuments(clientId);
       loaded = true;
       render();
-      setStatus(`${records.length} secure document${records.length === 1 ? '' : 's'} stored for this client.`);
+      setStatus(`${records.length} general document${records.length === 1 ? '' : 's'} stored for this client.`);
     } catch (error) {
       setStatus(error?.message || 'Unable to load secure documents.', true);
     } finally {
@@ -246,10 +245,6 @@ function bindNewDialog(dialog) {
   if (!(dialog instanceof HTMLDialogElement) || !dialog.classList.contains('client-dialog')) return;
   const clientId = dialog.dataset.clientId || pendingClientId;
   const panel = dialog.querySelector('[data-panel="documents"]');
-
-  // Existing-client dialogs are inserted before their async client form finishes
-  // rendering. Wait until the Documents panel actually exists, then replace the
-  // old placeholder with the live secure storage manager.
   if (!panel) return;
 
   if (!clientId) {
@@ -277,12 +272,8 @@ const observer = new MutationObserver(mutations => {
 
     for (const node of mutation.addedNodes) {
       if (!(node instanceof Element)) continue;
-
       if (node.matches('dialog.client-dialog')) bindNewDialog(node);
       node.querySelectorAll?.('dialog.client-dialog').forEach(bindNewDialog);
-
-      // Most importantly, rerun binding when the asynchronously loaded client
-      // form/panels are inserted inside an already-open client dialog.
       const parentDialog = node.closest?.('dialog.client-dialog');
       if (parentDialog) bindNewDialog(parentDialog);
     }
