@@ -1,0 +1,32 @@
+.pharmacy-panel{
+  margin-bottom:14px;
+  padding:15px;
+  border:1px solid #adb5bb;
+  border-radius:13px;
+  background:#f7f7f4;
+  box-shadow:0 2px 7px rgba(45,52,58,.06);
+}
+.pharmacy-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pharmacy-panel-head h3{margin:0 0 4px;color:#263746}
+.pharmacy-panel-head p{margin:0;color:#687681;font-size:13px}
+.pharmacy-fields{padding:12px;border:1px solid #c8cecf;border-radius:11px;background:#e6e1dc}
+.pharmacy-file-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid #c9cfD2}
+.pharmacy-file-head>div:first-child{display:grid;gap:3px}
+.pharmacy-file-head strong{color:#263746;font-size:13px}
+.pharmacy-file-head span{color:#687681;font-size:12px;line-height:1.4}
+.pharmacy-file-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pharmacy-file-list{display:grid;gap:8px;margin-top:10px}
+.pharmacy-file-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid #c8cfd4;border-radius:10px;background:#fff}
+.pharmacy-file-row.queued{background:#f0ede8;border-style:dashed}
+.pharmacy-file-row>div:first-child{display:grid;gap:3px;min-width:0}
+.pharmacy-file-row strong{overflow:hidden;color:#263746;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.pharmacy-file-row span{color:#687681;font-size:11px}
+.pharmacy-file-row>div:last-child{display:flex;gap:7px;flex:none}
+.pharmacy-file-empty{padding:15px;border:1px dashed #bbc3c8;border-radius:10px;background:#f5f6f5;color:#687681;text-align:center;font-size:12px}
+.pharmacy-file-status{min-height:18px;margin-top:8px;color:#65737d;font-size:12px;font-weight:700}
+.pharmacy-file-status.error{color:#8b3e3e}
+@media(max-width:700px){
+  .pharmacy-file-head,.pharmacy-file-row{align-items:stretch;flex-direction:column}
+  .pharmacy-file-actions,.pharmacy-file-row>div:last-child{width:100%}
+  .pharmacy-file-actions .btn,.pharmacy-file-row>div:last-child .btn{flex:1}
+}
