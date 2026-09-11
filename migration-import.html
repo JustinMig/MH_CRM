@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Mayer → M&H Client Migration</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17212b;background:#eef3f6}*{box-sizing:border-box}body{margin:0;padding:24px}.shell{max-width:820px;margin:0 auto}.card{background:#fff;border:1px solid #d7e0e5;border-radius:18px;box-shadow:0 8px 28px rgba(23,33,43,.08);padding:24px}h1{margin:0 0 8px;font-size:28px}p{line-height:1.5}.subtle{color:#60707c}.drop{display:block;margin:20px 0;padding:22px;border:2px dashed #9fb0bb;border-radius:14px;background:#f8fafb}.drop input{display:block;margin-top:10px;width:100%}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,a.btn{appearance:none;border:0;border-radius:10px;padding:11px 16px;font-weight:700;text-decoration:none;cursor:pointer}.primary{background:#245b75;color:#fff}.secondary{background:#e9eff2;color:#24404f}button:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:18px;padding:14px;border-radius:12px;background:#edf4f7;white-space:pre-wrap}.status.error{background:#fff0f0;color:#8d1d1d}.bar{height:10px;background:#e2e8ec;border-radius:99px;overflow:hidden;margin-top:12px}.bar>span{display:block;height:100%;width:0;background:#3d778f;transition:width .2s}.summary{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.metric{padding:12px;border-radius:12px;background:#f4f7f9}.metric strong{display:block;font-size:22px}.warning{margin-top:16px;padding:12px;border-radius:10px;background:#fff8df;color:#6c5614}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <h1>Mayer → M&H Client Migration</h1>
+      <p class="subtle">Owner/Admin only. Select the migration JSON exported from the current Mayer CRM. The importer keeps source record IDs, encrypts protected identifiers through M&H secure functions, and copies source documents into M&H storage.</p>
+      <div id="auth" class="status">Checking M&H login…</div>
+      <label class="drop">Migration JSON
+        <input id="file" type="file" accept="application/json,.json" disabled>
+      </label>
+      <div id="summary" class="summary" hidden></div>
+      <div id="expiry" class="warning" hidden></div>
+      <div class="actions">
+        <button id="import" class="primary" type="button" disabled>Import into M&H</button>
+        <a class="btn secondary" href="/">Back to M&H CRM</a>
+      </div>
+      <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+      <div id="status" class="status">Choose the Mayer migration file.</div>
+    </section>
+  </main>
+  <script type="module" src="/migration-import.js?v=1"></script>
+</body>
+</html>
