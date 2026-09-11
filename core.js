@@ -37,7 +37,7 @@ export function monthDays(year, month) {
   return Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 12));
 }
 export const longDate = key => {
-  const d = parseISO(value);
+  const d = parseISO(key);
   return d ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
 };
 export function timeLabel(value) {
