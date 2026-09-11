@@ -126,7 +126,8 @@ async function enhanceDialog(dialog) {
     medicaidGroup.innerHTML = '<summary>Medicaid Information</summary><div class="form-grid"></div>';
     medicaidGroup.open = false;
     medicaidGroup.querySelector('.form-grid').append(medicaidNumber, medicaidLevel);
-    medicareGroup.insertAdjacentElement('afterend', medicaidGroup);
+    const medicareGovGroup = panel.querySelector('[data-medicare-gov-credentials-group]');
+    (medicareGovGroup || medicareGroup).insertAdjacentElement('afterend', medicaidGroup);
   }
 
   const currentCarrier = healthCarrierInput.value || '';
