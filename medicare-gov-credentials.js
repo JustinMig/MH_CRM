@@ -14,18 +14,17 @@ function keepSocialVisible(form) {
   const personal = groupBySummary(information, 'Personal & Contact Information');
   const ssn = form.elements.namedItem('ssn');
   const ssnField = ssn?.closest?.('label.field');
-  if (!personal || !ssnField) return;
+  const grid = personal?.querySelector(':scope > .form-grid');
+  if (!personal || !ssnField || !grid) return;
 
-  let visible = information.querySelector('[data-client-social-visible]');
-  if (!visible) {
-    visible = document.createElement('div');
-    visible.className = 'client-social-visible';
-    visible.dataset.clientSocialVisible = 'true';
-    visible.innerHTML = '<div class="client-social-visible-title">Social Security Number</div>';
-    personal.insertAdjacentElement('beforebegin', visible);
+  const oldVisible = information.querySelector('[data-client-social-visible]');
+  const phoneField = form.elements.namedItem('phone')?.closest?.('label.field');
+  if (ssnField.parentElement !== grid) {
+    if (phoneField?.parentElement === grid) phoneField.insertAdjacentElement('afterend', ssnField);
+    else grid.append(ssnField);
   }
+  oldVisible?.remove();
 
-  if (ssnField.parentElement !== visible) visible.append(ssnField);
   const labelText = ssnField.querySelector(':scope > span');
   if (labelText) labelText.textContent = 'Social Security Number';
   ssn.type = 'text';
