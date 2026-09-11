@@ -7,6 +7,15 @@ import { shell, TOOLS, icon, empty, note, pending, saveFooter, options, input, d
 export function createWorkspace(root, repository = disconnectedRepository) {
   if (!(root instanceof HTMLElement)) throw new TypeError('M&H CRM needs an application root.');
   const dialogs = new Dialogs();
+  let campaignFeature = null, campaignModule = null;
+  async function campaigns() {
+    if (!repository.campaigns) throw new Error('Campaign storage is not connected.');
+    if (!campaignModule) campaignModule = import('./campaigns-ui.js').then(({ createCampaignFeature }) => {
+      campaignFeature = createCampaignFeature({ repository, dialogs, openClient, onCalendarChange: drawCalendar });
+      return campaignFeature;
+    }).catch(error => { campaignModule = null; throw error; });
+    return campaignModule;
+  }
   const now = new Date();
   const state = {
     route: 'dashboard', month: new Date(now.getFullYear(), now.getMonth(), 1, 12), events: [], calendarToken: 0,
@@ -20,6 +29,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
 
   function pageBody(route) {
     if (route === 'dashboard') return `<div id="calendar-host"></div><div class="metric-grid">${['Clients', 'Appointments', 'Notifications', 'Documents'].map(label => `<div class="metric-card"><span>${label}</span><strong>—</strong><small>${connected ? 'Summary not loaded' : 'Not connected'}</small></div>`).join('')}</div><section class="panel-card dark-card"><h2>Quick Actions</h2><div class="quick-actions"><button type="button" class="btn secondary" data-add-client>Client Information</button><a class="btn secondary" href="#/clients">Search Clients</a><button type="button" class="btn secondary" data-new-appointment>Set Appointment</button><a class="btn secondary" href="#/communications">Communications</a></div></section>`;
+    if (route === 'campaigns') return '<div id="campaigns-host"><p class="subtle">Loading campaigns…</p></div>';
     if (route === 'clients') return clientSearchMarkup(state.search, agents);
     if (route === 'appointments') return '<div id="calendar-host"></div>';
     if (route === 'communications') return `<div class="panel-card dark-card"><h2>Communications</h2><div class="integration-grid">${['RingCentral Voice', 'Client Text Messages', 'Call Recordings'].map(x => `<div><h3>${x}</h3><span class="tag">Not connected</span></div>`).join('')}</div>${empty('No conversation selected', 'Calls, texts, and recordings are not connected to this framework.')}</div>`;
@@ -28,6 +38,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
     return `<section class="panel-card dark-card"><h2>Standalone Environment</h2><dl class="settings-list"><dt>Site</dt><dd>MH.mayerig.com</dd><dt>Repository</dt><dd>JustinMig/MH_CRM</dd><dt>Hosting project</dt><dd>mh-crm</dd><dt>Database / authentication</dt><dd>${connected ? 'Repository connected; review server permissions separately' : 'Not connected'}</dd><dt>Document storage</dt><dd>Not connected</dd><dt>App Store</dt><dd>Native packaging, signing, and submission not configured</dd></dl><p class="muted">No database, document storage, client data, or credentials from Mayer CRM are used here.</p></section>`;
   }
   function render(route) {
+    campaignFeature?.unmount();
     state.route = route;
     root.innerHTML = shell(route, connected, pageBody(route));
     root.querySelectorAll('[data-tool]').forEach(button => button.onclick = () => openTool(button.dataset.tool));
@@ -39,6 +50,10 @@ export function createWorkspace(root, repository = disconnectedRepository) {
     shade.onclick = closeMenu;
     root.querySelector('.nav').onclick = closeMenu;
     if (route === 'clients') bindSearch();
+    if (route === 'campaigns') {
+      const host = root.querySelector('#campaigns-host');
+      campaigns().then(feature => { if (host.isConnected && !state.destroyed) feature.mount(host); }).catch(error => { if (host.isConnected) host.innerHTML = empty('Campaigns unavailable', error.message); });
+    }
     if (root.querySelector('#calendar-host')) drawCalendar();
   }
 
@@ -116,12 +131,17 @@ export function createWorkspace(root, repository = disconnectedRepository) {
     host.innerHTML = clientResultsMarkup(state.search);
     host.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => openClient(button.dataset.clientId));
     host.querySelector('[data-more]')?.addEventListener('click', () => searchClients(true));
+    if (repository.campaigns) {
+      const token = state.search.token;
+      campaigns().then(feature => { if (host.isConnected && token === state.search.token && !state.destroyed) feature.enhanceSearch(host, state.search.rows || []); }).catch(() => {});
+    }
   }
   function patchClient(saved) {
+    campaignFeature?.refreshClient(saved);
     if (!state.search.rows) return;
     state.search.rows = state.search.rows.map(row => row.id === saved.id ? { ...row, ...saved } : row);
     const record = state.search.rows.find(row => row.id === saved.id);
-    const row = root.querySelector(`[data-client-id="${CSS.escape(saved.id)}"]`);
+    const row = root.querySelector(`#client-results [data-client-id="${CSS.escape(saved.id)}"]`);
     if (row && record) row.innerHTML = clientResultContent(record);
   }
   function wireTabs(node) {
@@ -395,5 +415,5 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   window.addEventListener('hashchange', changeRoute);
   window.addEventListener('keydown', escapeMenu);
   changeRoute();
-  return { destroy() { state.destroyed = true; dialogs.destroy(); window.removeEventListener('hashchange', changeRoute); window.removeEventListener('keydown', escapeMenu); root.replaceChildren(); } };
+  return { destroy() { state.destroyed = true; campaignFeature?.destroy(); dialogs.destroy(); window.removeEventListener('hashchange', changeRoute); window.removeEventListener('keydown', escapeMenu); root.replaceChildren(); } };
 }

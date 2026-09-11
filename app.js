@@ -1,4 +1,5 @@
 import { makeClientSearch } from './client-search.js';
+import { createCampaignRepository } from './campaigns-repository.js';
 import { createWorkspace } from './workspace.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 import { installAdminUsers } from './admin-users.js';
@@ -12,6 +13,7 @@ installPullToRefresh();
 
 // Shared, paginated client search with location, status and creation-date sorting.
 mhRepository.searchClients = makeClientSearch(supabase);
+mhRepository.campaigns = createCampaignRepository(supabase);
 
 // Justin is the only current M&H user. The Agent filter is hidden, but the
 // search state still needs his ID so pressing Search with empty fields loads
