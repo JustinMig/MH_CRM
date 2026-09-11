@@ -8,7 +8,17 @@ test('sidebar contains only workspace pages, not client sections', () => {
   assert.equal(names.includes('clients'), true);
 });
 test('client sections are nested in the information dialog', () => {
-  assert.deepEqual(CLIENT_TABS.map(([key]) => key), ['information','medicare','life','retirement','documents','notes']);
+  assert.deepEqual(CLIENT_TABS.map(([key]) => key), [
+    'information','medicare','doctors','medications','hospital_indemnity','life','retirement','documents','notes'
+  ]);
+});
+test('client health sections stay inside the client record and not the sidebar', () => {
+  const nav = new Set(NAV.map(([key]) => key));
+  const tabs = new Set(CLIENT_TABS.map(([key]) => key));
+  for (const key of ['doctors','medications','hospital_indemnity']) {
+    assert.equal(nav.has(key), false);
+    assert.equal(tabs.has(key), true);
+  }
 });
 test('month grids start Sunday, end Saturday and contain complete weeks', () => {
   for (let year = 2024; year <= 2032; year++) for (let month = 0; month < 12; month++) {
