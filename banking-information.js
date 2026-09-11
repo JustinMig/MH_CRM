@@ -35,6 +35,7 @@ function markup() {
           <label class="field span-all"><span>Card Number</span><input name="banking_card_number" inputmode="numeric" autocomplete="off" maxlength="23"></label>
           <label class="field"><span>CVV <small>(not saved)</small></span><input name="banking_cvv" inputmode="numeric" autocomplete="off" maxlength="4"></label>
           <label class="field"><span>Expiration Date</span><input name="banking_card_expiration" inputmode="numeric" autocomplete="off" placeholder="MM/YY" maxlength="7"></label>
+          <label class="field span-all banking-card-notes-field"><span>Card Notes</span><textarea name="banking_card_notes" rows="4" maxlength="4000" placeholder="Enter notes about this card or payment method..."></textarea></label>
         </div>
         <p class="banking-cvv-note">For card security, CVV stays visible while you are entering it but is never stored in the CRM.</p>
       </section>
@@ -138,6 +139,7 @@ function apply(form, banking) {
   set(form, 'banking_account_number', banking.account_number);
   set(form, 'banking_card_number', formatCard(banking.card_number));
   set(form, 'banking_card_expiration', banking.card_expiration);
+  set(form, 'banking_card_notes', banking.card_notes);
   set(form, 'banking_cvv', '');
   showMethod(form);
   status(form, 'Encrypted banking information loaded securely. CVV is never stored.');
@@ -158,11 +160,12 @@ function fromRecord(record = {}) {
     account_number: String(record.banking_account_number || '').replace(/[^0-9A-Za-z]/g, ''),
     card_number: String(record.banking_card_number || '').replace(/\D/g, ''),
     card_expiration: String(record.banking_card_expiration || '').trim(),
+    card_notes: String(record.banking_card_notes || '').slice(0, 4000),
   };
 }
 
 function hasData(data) {
-  return !!(data.payment_method || data.bank_name || data.routing_number || data.account_number || data.card_number || data.card_expiration);
+  return !!(data.payment_method || data.bank_name || data.routing_number || data.account_number || data.card_number || data.card_expiration || data.card_notes);
 }
 
 document.addEventListener('click', event => {
