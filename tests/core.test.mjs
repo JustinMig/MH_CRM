@@ -9,8 +9,13 @@ test('sidebar contains only workspace pages, not client sections', () => {
 });
 test('client sections are nested in the information dialog', () => {
   assert.deepEqual(CLIENT_TABS.map(([key]) => key), [
-    'information','medicare','doctors','medications','hospital_indemnity','life','retirement','documents','notes'
+    'information','medicare','doctors','medications','hospital_indemnity','life','retirement','notes'
   ]);
+});
+test('Documents is merged into Notes Extras', () => {
+  const labels = Object.fromEntries(CLIENT_TABS);
+  assert.equal('documents' in labels, false);
+  assert.equal(labels.notes, 'Notes / Extras');
 });
 test('client health sections stay inside the client record and not the sidebar', () => {
   const nav = new Set(NAV.map(([key]) => key));
