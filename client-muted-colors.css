@@ -1,0 +1,132 @@
+/* Muted professional client-record palette. Loaded last to override brighter section colors. */
+
+/* Top client tabs: distinct, lower-saturation colors. */
+.client-form .section-tabs button{
+  color:#263746!important;
+  border-color:rgba(70,85,100,.38)!important;
+  box-shadow:none;
+  transition:background .12s ease,border-color .12s ease,transform .12s ease;
+}
+.client-form .section-tabs button[data-tab="information"]{background:#d8d1c3!important}
+.client-form .section-tabs button[data-tab="medicare"]{background:#c6d4df!important}
+.client-form .section-tabs button[data-tab="doctors"]{background:#c8d5d0!important}
+.client-form .section-tabs button[data-tab="medications"]{background:#d7cbd2!important}
+.client-form .section-tabs button[data-tab="hospital_indemnity"]{background:#d6cdbf!important}
+.client-form .section-tabs button[data-tab="life"]{background:#d9c8b7!important}
+.client-form .section-tabs button[data-tab="retirement"]{background:#cec8d8!important}
+.client-form .section-tabs button[data-tab="documents"]{background:#c7d1cf!important}
+.client-form .section-tabs button[data-tab="notes"]{background:#d6d0bf!important}
+.client-form .section-tabs button[aria-selected="true"]{
+  color:#172033!important;
+  border-color:#536575!important;
+  border-width:2px!important;
+  box-shadow:0 0 0 2px rgba(255,255,255,.8) inset,0 2px 5px rgba(15,23,42,.12)!important;
+  transform:translateY(-1px);
+}
+.client-form .section-tabs button[data-tab="information"][aria-selected="true"]{background:#c6bcaa!important}
+.client-form .section-tabs button[data-tab="medicare"][aria-selected="true"]{background:#afc3d2!important}
+.client-form .section-tabs button[data-tab="doctors"][aria-selected="true"]{background:#afc5bd!important}
+.client-form .section-tabs button[data-tab="medications"][aria-selected="true"]{background:#c5b4bd!important}
+.client-form .section-tabs button[data-tab="hospital_indemnity"][aria-selected="true"]{background:#c4b7a5!important}
+.client-form .section-tabs button[data-tab="life"][aria-selected="true"]{background:#c7b097!important}
+.client-form .section-tabs button[data-tab="retirement"][aria-selected="true"]{background:#bcb3cc!important}
+.client-form .section-tabs button[data-tab="documents"][aria-selected="true"]{background:#adbfbb!important}
+.client-form .section-tabs button[data-tab="notes"][aria-selected="true"]{background:#c2b99f!important}
+
+/* Shared accordion treatment: softer borders and no loud hover jump. */
+.client-form details.field-group,
+.client-form .life-policy-card,
+.client-form .health-record-card{
+  border-color:#aab1b5!important;
+  box-shadow:0 2px 7px rgba(45,52,58,.07)!important;
+}
+.client-form details.field-group>summary,
+.client-form .life-policy-card>summary,
+.client-form .health-record-card>summary{
+  color:#1f2933!important;
+  text-shadow:none!important;
+}
+
+/* Client Information: each dropdown gets a different muted tone. */
+[data-panel="information"]>details.field-group:nth-of-type(1)>summary{background:#d8d1c3!important}
+[data-panel="information"]>details.field-group:nth-of-type(2)>summary{background:#c6d4df!important}
+[data-panel="information"]>details.field-group:nth-of-type(3)>summary{background:#d4c8bc!important}
+[data-panel="information"]>details.field-group:nth-of-type(4)>summary{background:#cec8d8!important}
+[data-panel="information"]>details.field-group:nth-of-type(5)>summary{background:#c8d5d0!important}
+[data-panel="information"]>details.field-group:nth-of-type(6)>summary{background:#d6d0bf!important}
+[data-panel="information"]>details.field-group:nth-of-type(1)[open]>summary{background:#c6bcaa!important}
+[data-panel="information"]>details.field-group:nth-of-type(2)[open]>summary{background:#afc3d2!important}
+[data-panel="information"]>details.field-group:nth-of-type(3)[open]>summary{background:#c1b09f!important}
+[data-panel="information"]>details.field-group:nth-of-type(4)[open]>summary{background:#bcb3cc!important}
+[data-panel="information"]>details.field-group:nth-of-type(5)[open]>summary{background:#afc5bd!important}
+[data-panel="information"]>details.field-group:nth-of-type(6)[open]>summary{background:#c2b99f!important}
+
+/* Medicare: still easy to scan, but much more restrained. */
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary{background:#c9d5dd!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary{background:#d6cfbf!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary{background:#c7d3cb!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary{background:#d2c8d4!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary{background:#d5c9bd!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary{background:#c8ced8!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)[open]>summary{background:#b2c4cf!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)[open]>summary{background:#c3b9a6!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)[open]>summary{background:#b0c1b7!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)[open]>summary{background:#beb0c2!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)[open]>summary{background:#c1b2a1!important}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)[open]>summary{background:#b2bac8!important}
+
+/* Doctors: alternating muted blue/sage/stone cards. */
+[data-panel="doctors"] .health-record-card:nth-child(3n+1)>summary{background:#c5d2da!important}
+[data-panel="doctors"] .health-record-card:nth-child(3n+2)>summary{background:#c5d3cd!important}
+[data-panel="doctors"] .health-record-card:nth-child(3n)>summary{background:#d1cec5!important}
+[data-panel="doctors"] .health-record-card:nth-child(3n+1)[open]>summary{background:#afc1cc!important}
+[data-panel="doctors"] .health-record-card:nth-child(3n+2)[open]>summary{background:#adc2b9!important}
+[data-panel="doctors"] .health-record-card:nth-child(3n)[open]>summary{background:#bdb8ac!important}
+
+/* Medications: muted mauve, slate, and sage variations. */
+[data-panel="medications"] .health-record-card:nth-child(3n+1)>summary{background:#d3c5cc!important}
+[data-panel="medications"] .health-record-card:nth-child(3n+2)>summary{background:#c7ccd4!important}
+[data-panel="medications"] .health-record-card:nth-child(3n)>summary{background:#cad3c7!important}
+[data-panel="medications"] .health-record-card:nth-child(3n+1)[open]>summary{background:#bfaeb7!important}
+[data-panel="medications"] .health-record-card:nth-child(3n+2)[open]>summary{background:#b2b9c4!important}
+[data-panel="medications"] .health-record-card:nth-child(3n)[open]>summary{background:#b5c1b1!important}
+
+/* Hospital Indemnity: taupe/plum/steel variations. */
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n+1)>summary{background:#d3c9bb!important}
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n+2)>summary{background:#cec7d5!important}
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n)>summary{background:#c5ced3!important}
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n+1)[open]>summary{background:#c0b29f!important}
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n+2)[open]>summary{background:#bab0c4!important}
+[data-panel="hospital_indemnity"] .health-record-card:nth-child(3n)[open]>summary{background:#aebbc2!important}
+
+/* Life policies: alternate calm carrier cards rather than one bright blue. */
+[data-panel="life"] .life-policy-card:nth-child(4n+1)>summary{background:#d6c8b9!important}
+[data-panel="life"] .life-policy-card:nth-child(4n+2)>summary{background:#c6d1d7!important}
+[data-panel="life"] .life-policy-card:nth-child(4n+3)>summary{background:#c8d2ca!important}
+[data-panel="life"] .life-policy-card:nth-child(4n)>summary{background:#cec7d5!important}
+[data-panel="life"] .life-policy-card:nth-child(4n+1)[open]>summary{background:#c3b09d!important}
+[data-panel="life"] .life-policy-card:nth-child(4n+2)[open]>summary{background:#afbec7!important}
+[data-panel="life"] .life-policy-card:nth-child(4n+3)[open]>summary{background:#b1c0b5!important}
+[data-panel="life"] .life-policy-card:nth-child(4n)[open]>summary{background:#bab0c4!important}
+
+/* Retirement / Notes / any future accordion sections in those tabs. */
+[data-panel="retirement"]>details.field-group:nth-of-type(odd)>summary{background:#cec8d8!important}
+[data-panel="retirement"]>details.field-group:nth-of-type(even)>summary{background:#c6d1d7!important}
+[data-panel="retirement"]>details.field-group:nth-of-type(odd)[open]>summary{background:#bcb3cc!important}
+[data-panel="retirement"]>details.field-group:nth-of-type(even)[open]>summary{background:#afbec7!important}
+[data-panel="notes"]>details.field-group:nth-of-type(odd)>summary{background:#d6d0bf!important}
+[data-panel="notes"]>details.field-group:nth-of-type(even)>summary{background:#c8d2ca!important}
+[data-panel="notes"]>details.field-group:nth-of-type(odd)[open]>summary{background:#c2b99f!important}
+[data-panel="notes"]>details.field-group:nth-of-type(even)[open]>summary{background:#b1c0b5!important}
+
+/* Keep numbered section markers understated too. */
+[data-panel="information"]>details.field-group>summary::before,
+[data-panel="medicare"]>details.field-group>summary::before{
+  border-color:#5f6870!important;
+  color:#39434c!important;
+  background:#f8f8f6!important;
+}
+
+@media(max-width:700px){
+  .client-form .section-tabs button{padding:9px 12px}
+}
