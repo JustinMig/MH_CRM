@@ -1,0 +1,53 @@
+.client-product-status-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 14px 16px 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  background: rgba(15,23,42,.72);
+}
+
+.client-product-status-box legend {
+  width: 100%;
+  padding: 0;
+  margin: 0 0 4px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.client-product-status-box label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #fff;
+  font-weight: 700;
+}
+
+.client-product-status-box input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.client-product-status-box .client-deceased-choice {
+  margin-left: auto;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255,255,255,.18);
+}
+
+@media (max-width: 700px) {
+  .client-product-status-box {
+    gap: 10px 14px;
+  }
+  .client-product-status-box .client-deceased-choice {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+    width: 100%;
+  }
+}
