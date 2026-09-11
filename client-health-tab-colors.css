@@ -1,0 +1,6 @@
+.client-form .section-tabs button[data-tab="doctors"]{background:#b8dfb1;border-color:#7fb875;color:#173818}
+.client-form .section-tabs button[data-tab="medications"]{background:#f2b6c6;border-color:#d7839a;color:#4b1f2b}
+.client-form .section-tabs button[data-tab="hospital_indemnity"]{background:#bfc7ef;border-color:#8995d0;color:#202a5a}
+.client-form .section-tabs button[data-tab="doctors"][aria-selected="true"]{background:#97cf8d;border-color:#478b3d}
+.client-form .section-tabs button[data-tab="medications"][aria-selected="true"]{background:#e99bb0;border-color:#a64d68}
+.client-form .section-tabs button[data-tab="hospital_indemnity"][aria-selected="true"]{background:#9fa9e1;border-color:#5968b5}
