@@ -63,6 +63,24 @@
 [data-panel="medicare"]>details.field-group>.form-grid strong{
   color:#111;
 }
+/* Keep the compact card-upload controls dark with high-contrast white text. */
+[data-panel="medicare"] .medicare-card-manager,
+[data-panel="medicare"] .medicare-card-manager strong,
+[data-panel="medicare"] .medicare-card-manager span,
+[data-panel="medicare"] .medicare-card-manager label,
+[data-panel="medicare"] .medicare-card-manager .medicare-card-status{
+  color:#fff!important;
+}
+[data-panel="medicare"] .medicare-card-manager .btn.secondary{
+  background:#18324a;
+  border-color:#365168;
+  color:#fff!important;
+}
+[data-panel="medicare"] .medicare-card-manager .btn.danger{
+  background:#7f2f2f;
+  border-color:#a95656;
+  color:#fff!important;
+}
 @media(max-width:700px){
   [data-panel="medicare"]>details.field-group>summary{padding-left:48px!important}
   [data-panel="medicare"]>details.field-group>summary::before{left:11px;width:24px;height:24px}
