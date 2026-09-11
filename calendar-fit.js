@@ -1,5 +1,5 @@
 /* Keep the dashboard month calendar fully inside the visible screen.
-   This does not affect the standalone Appointments/calendar view. */
+   This does not affect any future standalone calendar route. */
 (() => {
   const app = document.querySelector('#app');
   if (!app) return;
@@ -14,11 +14,9 @@
   }
 
   function findDashboardHost() {
-    const hosts = app.querySelectorAll('#calendar-host');
-    for (const host of hosts) {
-      if (host.nextElementSibling?.classList.contains('metric-grid')) return host;
-    }
-    return null;
+    const route = location.hash.replace(/^#\/?/, '').split('?')[0] || 'dashboard';
+    if (route !== 'dashboard') return null;
+    return app.querySelector('#calendar-host');
   }
 
   function fitNow() {
@@ -61,6 +59,7 @@
   }
 
   new MutationObserver(scheduleFit).observe(app, { childList: true, subtree: true });
+  window.addEventListener('hashchange', scheduleFit, { passive: true });
   window.addEventListener('resize', scheduleFit, { passive: true });
   window.addEventListener('orientationchange', scheduleFit, { passive: true });
   window.visualViewport?.addEventListener('resize', scheduleFit, { passive: true });
