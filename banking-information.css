@@ -1,0 +1,86 @@
+.client-banking-group .form-grid {
+  align-items: start;
+}
+
+.banking-method-field select {
+  max-width: 360px;
+}
+
+.banking-method-panel {
+  padding: 14px;
+  border: 1px solid rgba(138,129,120,.5);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.banking-method-panel[hidden] {
+  display: none !important;
+}
+
+.banking-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.banking-panel-grid .field {
+  min-width: 0;
+}
+
+.banking-panel-grid .field > span,
+.banking-method-field > span {
+  font-weight: 800;
+}
+
+.banking-panel-grid input,
+.banking-method-field select {
+  width: 100%;
+  min-width: 0;
+}
+
+.banking-panel-grid small {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: .72;
+}
+
+.banking-cvv-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7a4a12;
+}
+
+.banking-mail-panel {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  background: #eef6fb;
+  border-color: #8aa4b8;
+}
+
+.banking-mail-panel strong {
+  color: #102a43;
+  font-size: 15px;
+}
+
+.banking-status {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #486581;
+}
+
+.banking-status.error {
+  color: #9b1c1c;
+}
+
+@media (max-width: 700px) {
+  .banking-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .banking-method-field select {
+    max-width: none;
+  }
+}
