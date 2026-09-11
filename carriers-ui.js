@@ -50,49 +50,35 @@ export function installCarrierVault(root) {
     const mount = document.createElement('section');
     mount.className = 'carrier-vault';
     mount.innerHTML = `
-      <section class="carrier-entry-panel">
-        <div class="carrier-section-heading">
+      <section class="carrier-add-panel">
+        <div class="carrier-section-heading compact">
           <div>
-            <h2>Carrier Login Information</h2>
-            <p>Add the carrier once, then choose it from Saved Carriers whenever you need the website or login information.</p>
+            <h2>Add Carrier</h2>
+            <p>Save a carrier website and login.</p>
           </div>
         </div>
-
-        <label class="carrier-select-label">
-          <span>Saved Carriers</span>
-          <select data-carrier-select><option value="">Loading saved carriers…</option></select>
-          <small data-carrier-count></small>
-        </label>
-
-        <form class="carrier-entry-form" autocomplete="off">
-          <input type="hidden" name="id">
-          <label><span>Carrier Name</span><input name="carrier_name" required placeholder="Example: UnitedHealthcare" autocomplete="organization"></label>
-          <label><span>Site Address</span><input name="site_url" required placeholder="https://www.carrier.com" inputmode="url" autocomplete="url"></label>
-          <label><span>Username</span><input name="login_username" placeholder="Your username" autocomplete="username"></label>
-          <label><span>Password</span><div class="carrier-password-field"><input name="login_password" type="password" placeholder="Your password" autocomplete="new-password"><button type="button" class="btn secondary" data-show-password>Show</button></div></label>
-          <div class="carrier-form-message" role="status" aria-live="polite"></div>
-          <div class="carrier-form-actions">
-            <button type="button" class="btn secondary" data-new-carrier>New / Clear</button>
-            <button type="button" class="btn secondary" data-refresh-carriers>Refresh Saved Carriers</button>
-            <button type="button" class="btn danger" data-delete-carrier hidden>Delete</button>
-            <a class="btn secondary carrier-go-site disabled" data-open-site href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Go to Carrier Site ↗</a>
-            <button type="submit" class="btn primary">Save Carrier</button>
-          </div>
+        <form class="carrier-add-form" autocomplete="off">
+          <label><span>Carrier Name</span><input name="carrier_name" required placeholder="Carrier name" autocomplete="organization"></label>
+          <label><span>Site Address</span><input name="site_url" required placeholder="https://carrier.com" inputmode="url" autocomplete="url"></label>
+          <label><span>Username</span><input name="login_username" placeholder="Username" autocomplete="username"></label>
+          <label><span>Password</span><div class="carrier-password-field"><input name="login_password" type="password" placeholder="Password" autocomplete="new-password"><button type="button" class="btn secondary" data-add-show-password>Show</button></div></label>
+          <div class="carrier-add-actions"><div class="carrier-form-message" data-add-message role="status" aria-live="polite"></div><button type="submit" class="btn primary">Save Carrier</button></div>
         </form>
       </section>
 
-      <section class="carrier-selected-panel" data-selected-panel hidden>
-        <h3>Selected Carrier</h3>
-        <div class="carrier-selected-grid">
-          <div><span>Carrier</span><strong data-selected-name>—</strong></div>
-          <div><span>Website</span><a data-selected-site href="#" target="_blank" rel="noopener noreferrer">—</a></div>
-          <div><span>Username</span><strong data-selected-username>—</strong></div>
-          <div><span>Password</span><strong class="carrier-secret" data-selected-password>••••••••</strong></div>
+      <section class="carrier-saved-panel">
+        <div class="carrier-section-heading">
+          <div>
+            <h2>Saved Carriers</h2>
+            <p>Select a carrier to view or edit its information.</p>
+          </div>
+          <small data-carrier-count></small>
         </div>
-        <div class="carrier-selected-actions">
-          <button type="button" class="btn secondary" data-reveal-selected>Show Password</button>
-          <a class="btn primary" data-selected-open href="#" target="_blank" rel="noopener noreferrer">Open Carrier Site ↗</a>
+        <div class="carrier-saved-select-row">
+          <select data-carrier-select aria-label="Saved Carriers"><option value="">Loading saved carriers…</option></select>
+          <button type="button" class="btn secondary" data-refresh-carriers>Refresh</button>
         </div>
+        <div class="carrier-list-message" data-list-message role="status" aria-live="polite"></div>
       </section>`;
 
     content.appendChild(mount);
@@ -100,171 +86,188 @@ export function installCarrierVault(root) {
   }
 
   function bind(mount) {
+    const addForm = mount.querySelector('.carrier-add-form');
+    const addMessage = mount.querySelector('[data-add-message]');
     const select = mount.querySelector('[data-carrier-select]');
     const count = mount.querySelector('[data-carrier-count]');
-    const form = mount.querySelector('.carrier-entry-form');
-    const message = mount.querySelector('.carrier-form-message');
-    const deleteButton = mount.querySelector('[data-delete-carrier]');
-    const openSite = mount.querySelector('[data-open-site]');
-    const selectedPanel = mount.querySelector('[data-selected-panel]');
-    const submitButton = form.querySelector('button[type="submit"]');
-    let selectedRecord = null;
+    const listMessage = mount.querySelector('[data-list-message]');
+    const addSubmit = addForm.querySelector('button[type="submit"]');
 
-    const setMessage = (text = '', error = false) => {
-      message.textContent = text;
-      message.classList.toggle('error', error);
+    const setAddMessage = (text = '', error = false) => {
+      addMessage.textContent = text;
+      addMessage.classList.toggle('error', error);
+    };
+    const setListMessage = (text = '', error = false) => {
+      listMessage.textContent = text;
+      listMessage.classList.toggle('error', error);
     };
 
-    const setSiteLink = value => {
-      const href = normalizeUrl(value);
-      openSite.href = href || '#';
-      openSite.setAttribute('aria-disabled', String(!href));
-      openSite.classList.toggle('disabled', !href);
-      return href;
-    };
-
-    const renderDropdown = (selectedId = '') => {
-      select.innerHTML = '<option value="">Select a carrier…</option>' + rows.map(row => `<option value="${esc(row.id)}">${esc(row.carrier_name)}</option>`).join('');
-      select.value = rows.some(row => String(row.id) === String(selectedId)) ? String(selectedId) : '';
+    const renderDropdown = () => {
+      select.innerHTML = '<option value="">Select a saved carrier…</option>' + rows.map(row => `<option value="${esc(row.id)}">${esc(row.carrier_name)}</option>`).join('');
+      select.value = '';
       count.textContent = `${rows.length} saved carrier${rows.length === 1 ? '' : 's'}`;
     };
 
-    const clearForm = (status = '') => {
-      selectedRecord = null;
-      form.reset();
-      form.elements.id.value = '';
-      form.elements.login_password.type = 'password';
-      mount.querySelector('[data-show-password]').textContent = 'Show';
-      select.value = '';
-      deleteButton.hidden = true;
-      selectedPanel.hidden = true;
-      setSiteLink('');
-      if (status) setMessage(status);
-    };
-
-    const displayCarrier = record => {
-      selectedRecord = record;
-      select.value = String(record.id || '');
-      form.elements.id.value = record.id || '';
-      form.elements.carrier_name.value = record.carrier_name || '';
-      form.elements.site_url.value = record.site_url || '';
-      form.elements.login_username.value = record.login_username || '';
-      form.elements.login_password.value = record.login_password || '';
-      form.elements.login_password.type = 'password';
-      mount.querySelector('[data-show-password]').textContent = 'Show';
-      deleteButton.hidden = false;
-      const href = setSiteLink(record.site_url);
-
-      selectedPanel.hidden = false;
-      selectedPanel.querySelector('[data-selected-name]').textContent = record.carrier_name || '—';
-      const site = selectedPanel.querySelector('[data-selected-site]');
-      site.textContent = record.site_url || '—';
-      site.href = href || '#';
-      selectedPanel.querySelector('[data-selected-username]').textContent = record.login_username || '—';
-      const pass = selectedPanel.querySelector('[data-selected-password]');
-      pass.textContent = record.login_password ? '••••••••' : '—';
-      pass.dataset.revealed = 'false';
-      mount.querySelector('[data-reveal-selected]').textContent = 'Show Password';
-      const selectedOpen = selectedPanel.querySelector('[data-selected-open]');
-      selectedOpen.href = href || '#';
-      selectedOpen.classList.toggle('disabled', !href);
-      selectedOpen.setAttribute('aria-disabled', String(!href));
-      setMessage(`Loaded ${record.carrier_name}. You can edit the fields and save changes.`);
-    };
-
-    async function loadCarriers(selectedId = '') {
+    async function loadCarriers() {
       select.disabled = true;
-      setMessage('Loading saved carriers…');
+      setListMessage('Loading saved carriers…');
       try {
         rows = await listCarriers();
         if (!mount.isConnected || route() !== 'carriers') return;
-        renderDropdown(selectedId);
-        const selected = rows.find(row => String(row.id) === String(selectedId));
-        if (selected) displayCarrier(selected);
-        else clearForm(rows.length ? `${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded. Choose one from the drop-down.` : 'No saved carriers yet. Add one below and press Save Carrier.');
+        renderDropdown();
+        setListMessage(rows.length ? 'Choose a carrier from the drop-down.' : 'No saved carriers yet.');
       } catch (error) {
         rows = [];
         renderDropdown();
-        setMessage(error?.message || 'Unable to load saved carriers.', true);
+        setListMessage(error?.message || 'Unable to load saved carriers.', true);
       } finally {
         select.disabled = false;
       }
     }
 
-    select.addEventListener('change', () => {
-      const record = rows.find(row => String(row.id) === String(select.value));
-      if (record) displayCarrier(record);
-      else clearForm(`${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded.`);
-    });
+    const openCarrierEditor = record => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'carrier-edit-dialog';
+      const href = normalizeUrl(record.site_url);
+      dialog.innerHTML = `
+        <form class="carrier-edit-form" method="dialog" autocomplete="off">
+          <header>
+            <div><h2>${esc(record.carrier_name || 'Carrier')}</h2><p>View or edit this saved carrier.</p></div>
+            <button type="button" class="carrier-dialog-close" data-close aria-label="Close">×</button>
+          </header>
+          <div class="carrier-edit-body">
+            <input type="hidden" name="id" value="${esc(record.id || '')}">
+            <label><span>Carrier Name</span><input name="carrier_name" required value="${esc(record.carrier_name || '')}"></label>
+            <label><span>Site Address</span><input name="site_url" required inputmode="url" value="${esc(record.site_url || '')}"></label>
+            <label><span>Username</span><input name="login_username" autocomplete="username" value="${esc(record.login_username || '')}"></label>
+            <label><span>Password</span><div class="carrier-password-field"><input name="login_password" type="password" autocomplete="new-password" value="${esc(record.login_password || '')}"><button type="button" class="btn secondary" data-edit-show-password>Show</button></div></label>
+            <div class="carrier-form-message" data-edit-message role="alert"></div>
+          </div>
+          <footer>
+            <button type="button" class="btn danger" data-delete>Delete</button>
+            <div class="carrier-dialog-actions">
+              <a class="btn secondary${href ? '' : ' disabled'}" data-dialog-site href="${esc(href || '#')}" target="_blank" rel="noopener noreferrer" aria-disabled="${String(!href)}">Go to Site ↗</a>
+              <button type="button" class="btn secondary" data-close>Close</button>
+              <button type="submit" class="btn primary">Save Changes</button>
+            </div>
+          </footer>
+        </form>`;
+      document.body.appendChild(dialog);
 
-    form.elements.site_url.addEventListener('input', e => setSiteLink(e.target.value));
+      const form = dialog.querySelector('form');
+      const message = dialog.querySelector('[data-edit-message]');
+      const submit = form.querySelector('button[type="submit"]');
+      const deleteButton = dialog.querySelector('[data-delete]');
+      const siteLink = dialog.querySelector('[data-dialog-site]');
 
-    mount.querySelector('[data-show-password]').addEventListener('click', e => {
-      const input = form.elements.login_password;
+      const setEditMessage = (text = '', error = false) => {
+        message.textContent = text;
+        message.classList.toggle('error', error);
+      };
+      const updateSiteLink = () => {
+        const nextHref = normalizeUrl(form.elements.site_url.value);
+        siteLink.href = nextHref || '#';
+        siteLink.classList.toggle('disabled', !nextHref);
+        siteLink.setAttribute('aria-disabled', String(!nextHref));
+      };
+      const close = () => dialog.close();
+
+      dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', close));
+      dialog.addEventListener('cancel', e => { e.preventDefault(); close(); });
+      dialog.addEventListener('close', () => { dialog.remove(); select.value = ''; }, { once: true });
+      form.elements.site_url.addEventListener('input', updateSiteLink);
+      siteLink.addEventListener('click', e => { if (!normalizeUrl(form.elements.site_url.value)) e.preventDefault(); });
+
+      dialog.querySelector('[data-edit-show-password]').addEventListener('click', e => {
+        const input = form.elements.login_password;
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        e.currentTarget.textContent = showing ? 'Show' : 'Hide';
+      });
+
+      deleteButton.addEventListener('click', async () => {
+        if (!confirm(`Delete ${record.carrier_name}?`)) return;
+        deleteButton.disabled = true;
+        setEditMessage('Deleting…');
+        try {
+          await deleteCarrier(record.id);
+          dialog.close();
+          await loadCarriers();
+          setListMessage(`${record.carrier_name} deleted.`);
+        } catch (error) {
+          deleteButton.disabled = false;
+          setEditMessage(error?.message || 'Unable to delete this carrier.', true);
+        }
+      });
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!form.reportValidity()) return;
+        const fd = new FormData(form);
+        const site = normalizeUrl(fd.get('site_url'));
+        if (!site) { setEditMessage('Enter a valid carrier site address.', true); return; }
+        submit.disabled = true;
+        setEditMessage('Saving changes…');
+        try {
+          await saveCarrier({
+            id: String(fd.get('id') || ''),
+            carrier_name: String(fd.get('carrier_name') || '').trim(),
+            site_url: site,
+            login_username: String(fd.get('login_username') || '').trim(),
+            login_password: String(fd.get('login_password') || '')
+          });
+          dialog.close();
+          await loadCarriers();
+          setListMessage('Carrier updated successfully.');
+        } catch (error) {
+          submit.disabled = false;
+          setEditMessage(error?.message || 'Unable to update this carrier.', true);
+        }
+      });
+
+      dialog.showModal();
+    };
+
+    mount.querySelector('[data-add-show-password]').addEventListener('click', e => {
+      const input = addForm.elements.login_password;
       const showing = input.type === 'text';
       input.type = showing ? 'password' : 'text';
       e.currentTarget.textContent = showing ? 'Show' : 'Hide';
     });
 
-    mount.querySelector('[data-new-carrier]').addEventListener('click', () => {
-      clearForm(`${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded. Enter a new carrier below.`);
-      form.elements.carrier_name.focus();
-    });
-
-    mount.querySelector('[data-refresh-carriers]').addEventListener('click', () => loadCarriers(select.value));
-    openSite.addEventListener('click', e => { if (!normalizeUrl(form.elements.site_url.value)) e.preventDefault(); });
-
-    mount.querySelector('[data-reveal-selected]').addEventListener('click', e => {
-      if (!selectedRecord?.login_password) return;
-      const pass = selectedPanel.querySelector('[data-selected-password]');
-      const revealed = pass.dataset.revealed === 'true';
-      pass.textContent = revealed ? '••••••••' : selectedRecord.login_password;
-      pass.dataset.revealed = String(!revealed);
-      e.currentTarget.textContent = revealed ? 'Show Password' : 'Hide Password';
-    });
-
-    deleteButton.addEventListener('click', async () => {
-      const id = form.elements.id.value;
-      if (!id || !selectedRecord) return;
-      if (!confirm(`Delete ${selectedRecord.carrier_name}?`)) return;
-      deleteButton.disabled = true;
-      try {
-        await deleteCarrier(id);
-        await loadCarriers();
-        setMessage('Carrier deleted.');
-      } catch (error) {
-        setMessage(error?.message || 'Unable to delete this carrier.', true);
-      } finally {
-        deleteButton.disabled = false;
-      }
-    });
-
-    form.addEventListener('submit', async e => {
+    addForm.addEventListener('submit', async e => {
       e.preventDefault();
-      if (!form.reportValidity()) return;
-      const fd = new FormData(form);
+      if (!addForm.reportValidity()) return;
+      const fd = new FormData(addForm);
       const site = normalizeUrl(fd.get('site_url'));
-      if (!site) { setMessage('Enter a valid carrier site address.', true); return; }
-
-      submitButton.disabled = true;
-      setMessage('Saving carrier…');
+      if (!site) { setAddMessage('Enter a valid carrier site address.', true); return; }
+      addSubmit.disabled = true;
+      setAddMessage('Saving…');
       try {
-        const savedId = await saveCarrier({
-          id: String(fd.get('id') || ''),
+        await saveCarrier({
           carrier_name: String(fd.get('carrier_name') || '').trim(),
           site_url: site,
           login_username: String(fd.get('login_username') || '').trim(),
           login_password: String(fd.get('login_password') || '')
         });
-        await loadCarriers(savedId);
-        setMessage('Carrier saved successfully.');
+        addForm.reset();
+        addForm.elements.login_password.type = 'password';
+        mount.querySelector('[data-add-show-password]').textContent = 'Show';
+        await loadCarriers();
+        setAddMessage('Carrier saved.');
       } catch (error) {
-        setMessage(error?.message || 'Unable to save this carrier.', true);
+        setAddMessage(error?.message || 'Unable to save this carrier.', true);
       } finally {
-        submitButton.disabled = false;
+        addSubmit.disabled = false;
       }
     });
 
+    select.addEventListener('change', () => {
+      const record = rows.find(row => String(row.id) === String(select.value));
+      if (record) openCarrierEditor(record);
+    });
+
+    mount.querySelector('[data-refresh-carriers]').addEventListener('click', loadCarriers);
     loadCarriers();
   }
 
