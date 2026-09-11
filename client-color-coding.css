@@ -1,0 +1,73 @@
+/* Client Information dropdowns use the same warm, high-contrast visual language as Medicare. */
+[data-panel="information"]>details.field-group{
+  border:1px solid #8a8178;
+  background:#fffdf8;
+  box-shadow:0 3px 10px rgba(45,39,32,.08);
+}
+[data-panel="information"]>details.field-group>summary{
+  position:relative;
+  color:#111!important;
+  padding-left:52px!important;
+  text-shadow:none;
+}
+[data-panel="information"]>details.field-group>summary::before{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  width:25px;
+  height:25px;
+  display:grid;
+  place-items:center;
+  border:2px solid #111;
+  border-radius:50%;
+  background:#fff;
+  color:#111;
+  font-size:12px;
+  font-weight:950;
+  line-height:1;
+}
+[data-panel="information"]>details.field-group:nth-of-type(1)>summary{background:#f6df86}
+[data-panel="information"]>details.field-group:nth-of-type(2)>summary{background:#a9d6f5}
+[data-panel="information"]>details.field-group:nth-of-type(3)>summary{background:#f3b66e}
+[data-panel="information"]>details.field-group:nth-of-type(4)>summary{background:#c9b8e6}
+[data-panel="information"]>details.field-group:nth-of-type(5)>summary{background:#a8d8cf}
+[data-panel="information"]>details.field-group:nth-of-type(6)>summary{background:#e4c58b}
+[data-panel="information"]>details.field-group:nth-of-type(1)>summary::before{content:'1'}
+[data-panel="information"]>details.field-group:nth-of-type(2)>summary::before{content:'2'}
+[data-panel="information"]>details.field-group:nth-of-type(3)>summary::before{content:'3'}
+[data-panel="information"]>details.field-group:nth-of-type(4)>summary::before{content:'4'}
+[data-panel="information"]>details.field-group:nth-of-type(5)>summary::before{content:'5'}
+[data-panel="information"]>details.field-group:nth-of-type(6)>summary::before{content:'6'}
+[data-panel="information"]>details.field-group:nth-of-type(1)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(1)[open]>summary{background:#edcf58}
+[data-panel="information"]>details.field-group:nth-of-type(2)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(2)[open]>summary{background:#86c4ed}
+[data-panel="information"]>details.field-group:nth-of-type(3)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(3)[open]>summary{background:#eba14d}
+[data-panel="information"]>details.field-group:nth-of-type(4)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(4)[open]>summary{background:#b6a0da}
+[data-panel="information"]>details.field-group:nth-of-type(5)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(5)[open]>summary{background:#8bc8bc}
+[data-panel="information"]>details.field-group:nth-of-type(6)>summary:hover,[data-panel="information"]>details.field-group:nth-of-type(6)[open]>summary{background:#d7b36d}
+[data-panel="information"]>details.field-group[open]>summary{border-bottom:1px solid #8a8178}
+[data-panel="information"]>details.field-group>.form-grid{background:#fffdf8}
+
+/* Each client tab keeps its own color, with a stronger selected state. */
+.client-form .section-tabs button[data-tab="information"]{background:#f6df86;border-color:#d4b94b;color:#111}
+.client-form .section-tabs button[data-tab="medicare"]{background:#a9d6f5;border-color:#6eaed9;color:#102a43}
+.client-form .section-tabs button[data-tab="life"]{background:#f3b66e;border-color:#d98c32;color:#3c2410}
+.client-form .section-tabs button[data-tab="retirement"]{background:#c9b8e6;border-color:#9d83cb;color:#2f2148}
+.client-form .section-tabs button[data-tab="documents"]{background:#a8d8cf;border-color:#6cad9f;color:#173c36}
+.client-form .section-tabs button[data-tab="notes"]{background:#e4c58b;border-color:#be9449;color:#3f2d10}
+.client-form .section-tabs button[aria-selected="true"]{
+  border-width:2px;
+  color:#111;
+  box-shadow:0 0 0 2px #fff inset,0 2px 6px rgba(15,23,42,.18);
+  transform:translateY(-1px);
+}
+.client-form .section-tabs button[data-tab="information"][aria-selected="true"]{background:#edcf58;border-color:#9c7c00}
+.client-form .section-tabs button[data-tab="medicare"][aria-selected="true"]{background:#86c4ed;border-color:#2f78a8}
+.client-form .section-tabs button[data-tab="life"][aria-selected="true"]{background:#eba14d;border-color:#a95a00}
+.client-form .section-tabs button[data-tab="retirement"][aria-selected="true"]{background:#b6a0da;border-color:#7355a9}
+.client-form .section-tabs button[data-tab="documents"][aria-selected="true"]{background:#8bc8bc;border-color:#3e8c7d}
+.client-form .section-tabs button[data-tab="notes"][aria-selected="true"]{background:#d7b36d;border-color:#987024}
+@media(max-width:700px){
+  [data-panel="information"]>details.field-group>summary{padding-left:48px!important}
+  [data-panel="information"]>details.field-group>summary::before{left:11px;width:24px;height:24px}
+}
