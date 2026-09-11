@@ -12,19 +12,10 @@ const normalizeUrl = value => {
   } catch { return ''; }
 };
 
-async function listCarrierIndex() {
-  const { data, error } = await supabase
-    .from('carrier_credentials')
-    .select('id,carrier_name,site_url,login_username,created_at,updated_at')
-    .order('carrier_name', { ascending: true });
+async function listCarriers() {
+  const { data, error } = await supabase.rpc('list_my_carriers');
   if (error) throw error;
   return Array.isArray(data) ? data : [];
-}
-
-async function getCarrier(id) {
-  const { data, error } = await supabase.rpc('get_my_carrier', { p_id: id });
-  if (error) throw error;
-  return Array.isArray(data) ? (data[0] || null) : (data || null);
 }
 
 async function saveCarrier(value) {
@@ -53,12 +44,10 @@ export function installCarrierVault(root) {
     const content = root.querySelector('.content');
     const heading = content?.querySelector(':scope > .page-heading');
     if (!content || !heading) return;
-
-    let mount = content.querySelector(':scope > .carrier-vault');
-    if (mount) return;
+    if (content.querySelector(':scope > .carrier-vault')) return;
 
     Array.from(content.children).forEach(node => { if (node !== heading) node.remove(); });
-    mount = document.createElement('section');
+    const mount = document.createElement('section');
     mount.className = 'carrier-vault';
     mount.innerHTML = `
       <section class="carrier-entry-panel">
@@ -71,9 +60,7 @@ export function installCarrierVault(root) {
 
         <label class="carrier-select-label">
           <span>Saved Carriers</span>
-          <select data-carrier-select>
-            <option value="">Loading saved carriers…</option>
-          </select>
+          <select data-carrier-select><option value="">Loading saved carriers…</option></select>
           <small data-carrier-count></small>
         </label>
 
@@ -106,8 +93,8 @@ export function installCarrierVault(root) {
           <button type="button" class="btn secondary" data-reveal-selected>Show Password</button>
           <a class="btn primary" data-selected-open href="#" target="_blank" rel="noopener noreferrer">Open Carrier Site ↗</a>
         </div>
-      </section>
-    `;
+      </section>`;
+
     content.appendChild(mount);
     bind(mount);
   }
@@ -185,20 +172,16 @@ export function installCarrierVault(root) {
       setMessage(`Loaded ${record.carrier_name}. You can edit the fields and save changes.`);
     };
 
-    async function loadIndex(selectedId = '') {
+    async function loadCarriers(selectedId = '') {
       select.disabled = true;
       setMessage('Loading saved carriers…');
       try {
-        rows = await listCarrierIndex();
+        rows = await listCarriers();
         if (!mount.isConnected || route() !== 'carriers') return;
         renderDropdown(selectedId);
-        if (!rows.length) clearForm('No saved carriers yet. Add one below and press Save Carrier.');
-        else if (selectedId && rows.some(row => String(row.id) === String(selectedId))) {
-          const detail = await getCarrier(selectedId);
-          if (detail && mount.isConnected) displayCarrier(detail);
-        } else {
-          clearForm(`${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded. Choose one from the drop-down.`);
-        }
+        const selected = rows.find(row => String(row.id) === String(selectedId));
+        if (selected) displayCarrier(selected);
+        else clearForm(rows.length ? `${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded. Choose one from the drop-down.` : 'No saved carriers yet. Add one below and press Save Carrier.');
       } catch (error) {
         rows = [];
         renderDropdown();
@@ -208,23 +191,14 @@ export function installCarrierVault(root) {
       }
     }
 
-    select.addEventListener('change', async () => {
-      const id = select.value;
-      if (!id) { clearForm(`${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded.`); return; }
-      select.disabled = true;
-      setMessage('Loading carrier information…');
-      try {
-        const record = await getCarrier(id);
-        if (!record) throw new Error('The selected carrier could not be found.');
-        displayCarrier(record);
-      } catch (error) {
-        setMessage(error?.message || 'Unable to load this carrier.', true);
-      } finally {
-        select.disabled = false;
-      }
+    select.addEventListener('change', () => {
+      const record = rows.find(row => String(row.id) === String(select.value));
+      if (record) displayCarrier(record);
+      else clearForm(`${rows.length} saved carrier${rows.length === 1 ? '' : 's'} loaded.`);
     });
 
     form.elements.site_url.addEventListener('input', e => setSiteLink(e.target.value));
+
     mount.querySelector('[data-show-password]').addEventListener('click', e => {
       const input = form.elements.login_password;
       const showing = input.type === 'text';
@@ -237,7 +211,7 @@ export function installCarrierVault(root) {
       form.elements.carrier_name.focus();
     });
 
-    mount.querySelector('[data-refresh-carriers]').addEventListener('click', () => loadIndex(select.value));
+    mount.querySelector('[data-refresh-carriers]').addEventListener('click', () => loadCarriers(select.value));
     openSite.addEventListener('click', e => { if (!normalizeUrl(form.elements.site_url.value)) e.preventDefault(); });
 
     mount.querySelector('[data-reveal-selected]').addEventListener('click', e => {
@@ -256,7 +230,7 @@ export function installCarrierVault(root) {
       deleteButton.disabled = true;
       try {
         await deleteCarrier(id);
-        await loadIndex();
+        await loadCarriers();
         setMessage('Carrier deleted.');
       } catch (error) {
         setMessage(error?.message || 'Unable to delete this carrier.', true);
@@ -282,7 +256,7 @@ export function installCarrierVault(root) {
           login_username: String(fd.get('login_username') || '').trim(),
           login_password: String(fd.get('login_password') || '')
         });
-        await loadIndex(savedId);
+        await loadCarriers(savedId);
         setMessage('Carrier saved successfully.');
       } catch (error) {
         setMessage(error?.message || 'Unable to save this carrier.', true);
@@ -291,7 +265,7 @@ export function installCarrierVault(root) {
       }
     });
 
-    loadIndex();
+    loadCarriers();
   }
 
   const onHash = () => queueMicrotask(mountPage);
