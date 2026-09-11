@@ -4,6 +4,7 @@ import { installAdminUsers } from './admin-users.js';
 import { installPullToRefresh } from './pull-to-refresh.js';
 import { installDashboardCleanup } from './dashboard-cleanup.js';
 import { installAppointmentSingleAgent } from './appointment-ui.js';
+import { installCarrierVault } from './carriers-ui.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -86,6 +87,10 @@ async function start() {
     installDashboardCleanup(root);
     installAppointmentSingleAgent(root, mhRepository);
     installAdminUsers(root, mhRepository);
+    // Install the carrier screen only after the authenticated Supabase session
+    // and profile are fully restored. This makes saved carriers load correctly
+    // after a browser refresh instead of racing the login/session startup.
+    installCarrierVault(root);
     applyCurrentUserToClientSearch();
   } catch (error) {
     authScreen(`<b>Database connection error:</b> ${error.message || 'Please retry.'}`);
