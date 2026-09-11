@@ -1,0 +1,98 @@
+[data-panel="life"] .life-policy-documents{
+  margin-top:2px;
+  padding:14px;
+  border:1px solid #c7d6e2;
+  border-radius:12px;
+  background:#f8fbfd;
+}
+[data-panel="life"] .life-policy-documents-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+}
+[data-panel="life"] .life-policy-documents-head>div:first-child,
+[data-panel="life"] .life-policy-documents-unsaved>div{
+  display:grid;
+  gap:4px;
+}
+[data-panel="life"] .life-policy-documents strong{
+  color:#17324a;
+  font-size:13px;
+  font-weight:900;
+}
+[data-panel="life"] .life-policy-documents span{
+  color:#64748b;
+  font-size:12px;
+  line-height:1.4;
+}
+[data-panel="life"] .life-policy-document-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  flex:none;
+}
+[data-panel="life"] .life-policy-document-list{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+[data-panel="life"] .life-policy-document-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 11px;
+  border:1px solid #d6e1e8;
+  border-radius:10px;
+  background:#fff;
+}
+[data-panel="life"] .life-policy-document-row>div:first-child{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+[data-panel="life"] .life-policy-document-row>div:first-child strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+[data-panel="life"] .life-policy-document-row>div:last-child{
+  display:flex;
+  gap:7px;
+  flex:none;
+}
+[data-panel="life"] .life-policy-document-empty{
+  padding:10px;
+  border:1px dashed #c8d6df;
+  border-radius:9px;
+  color:#64748b;
+  font-size:12px;
+  text-align:center;
+}
+[data-panel="life"] .life-policy-document-status{
+  margin-top:8px;
+  color:#486581;
+  font-size:12px;
+  font-weight:700;
+}
+[data-panel="life"] .life-policy-document-status.error{color:#9b1c1c}
+[data-panel="life"] .life-policy-documents-unsaved{
+  background:#fff9e9;
+  border-color:#e3c97d;
+}
+@media(max-width:700px){
+  [data-panel="life"] .life-policy-documents-head,
+  [data-panel="life"] .life-policy-document-row{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  [data-panel="life"] .life-policy-document-actions,
+  [data-panel="life"] .life-policy-document-row>div:last-child{
+    width:100%;
+  }
+  [data-panel="life"] .life-policy-document-actions .btn,
+  [data-panel="life"] .life-policy-document-row>div:last-child .btn{
+    flex:1;
+  }
+}
