@@ -23,6 +23,24 @@ function enhanceClientForm(form) {
     products.append(label);
   }
 
+  const deceased = products.querySelector('[data-client-deceased]');
+  const productChecks = Array.from(products.querySelectorAll('input[type="checkbox"][name^="product_"]'));
+
+  deceased?.addEventListener('change', () => {
+    if (!deceased.checked) return;
+    productChecks.forEach(input => {
+      if (!input.checked) return;
+      input.checked = false;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
+  productChecks.forEach(input => input.addEventListener('change', () => {
+    if (!input.checked || !deceased?.checked) return;
+    deceased.checked = false;
+    deceased.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+
   personal.insertAdjacentElement('beforebegin', products);
 }
 
