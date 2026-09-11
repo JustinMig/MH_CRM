@@ -24,7 +24,8 @@ async function saveCarrier(value) {
     p_carrier_name: value.carrier_name,
     p_site_url: value.site_url,
     p_login_username: value.login_username || null,
-    p_login_password: value.login_password ?? ''
+    p_login_password: value.login_password ?? '',
+    p_agent_id_writing_number: value.agent_id_writing_number || null
   });
   if (error) throw error;
   return String(data || value.id || '');
@@ -54,12 +55,13 @@ export function installCarrierVault(root) {
         <div class="carrier-section-heading compact">
           <div>
             <h2>Add Carrier</h2>
-            <p>Save a carrier website and login.</p>
+            <p>Save a carrier website, Agent ID / Writing Number, and login.</p>
           </div>
         </div>
         <form class="carrier-add-form" autocomplete="off">
           <label><span>Carrier Name</span><input name="carrier_name" required placeholder="Carrier name" autocomplete="organization"></label>
           <label><span>Site Address</span><input name="site_url" required placeholder="https://carrier.com" inputmode="url" autocomplete="url"></label>
+          <label><span>Agent ID / Writing Number</span><input name="agent_id_writing_number" placeholder="Agent ID or writing number" autocomplete="off"></label>
           <label><span>Username</span><input name="login_username" placeholder="Username" autocomplete="username"></label>
           <label><span>Password</span><div class="carrier-password-field"><input name="login_password" type="password" placeholder="Password" autocomplete="new-password"><button type="button" class="btn secondary" data-add-show-password>Show</button></div></label>
           <div class="carrier-add-actions"><div class="carrier-form-message" data-add-message role="status" aria-live="polite"></div><button type="submit" class="btn primary">Save Carrier</button></div>
@@ -139,6 +141,7 @@ export function installCarrierVault(root) {
             <input type="hidden" name="id" value="${esc(record.id || '')}">
             <label><span>Carrier Name</span><input name="carrier_name" required value="${esc(record.carrier_name || '')}"></label>
             <label><span>Site Address</span><input name="site_url" required inputmode="url" value="${esc(record.site_url || '')}"></label>
+            <label><span>Agent ID / Writing Number</span><input name="agent_id_writing_number" value="${esc(record.agent_id_writing_number || '')}" placeholder="Agent ID or writing number"></label>
             <label><span>Username</span><input name="login_username" autocomplete="username" value="${esc(record.login_username || '')}"></label>
             <label><span>Password</span><div class="carrier-password-field"><input name="login_password" type="password" autocomplete="new-password" value="${esc(record.login_password || '')}"><button type="button" class="btn secondary" data-edit-show-password>Show</button></div></label>
             <div class="carrier-form-message" data-edit-message role="alert"></div>
@@ -213,6 +216,7 @@ export function installCarrierVault(root) {
             id: String(fd.get('id') || ''),
             carrier_name: String(fd.get('carrier_name') || '').trim(),
             site_url: site,
+            agent_id_writing_number: String(fd.get('agent_id_writing_number') || '').trim(),
             login_username: String(fd.get('login_username') || '').trim(),
             login_password: String(fd.get('login_password') || '')
           });
@@ -247,6 +251,7 @@ export function installCarrierVault(root) {
         await saveCarrier({
           carrier_name: String(fd.get('carrier_name') || '').trim(),
           site_url: site,
+          agent_id_writing_number: String(fd.get('agent_id_writing_number') || '').trim(),
           login_username: String(fd.get('login_username') || '').trim(),
           login_password: String(fd.get('login_password') || '')
         });
