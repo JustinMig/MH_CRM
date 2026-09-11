@@ -47,6 +47,52 @@ function markProtectedDirty(form, name) {
   if (protectedNames.sensitive.has(name)) form.dataset.auditSensitiveDirty = 'true';
 }
 
+async function downloadInside(url, name = 'document') {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Unable to download this file.');
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = name;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+function openSignedPreview(url) {
+  const rawName = decodeURIComponent(String(url).split('?')[0].split('/').pop() || 'Secure Document');
+  const modal = document.createElement('dialog');
+  modal.className = 'mh-file-preview-dialog';
+  modal.innerHTML = `<div class="mh-file-preview-frame">
+    <header class="mh-file-preview-head"><div><h2>${rawName.replace(/[<>]/g,'')}</h2><p>Secure in-site preview</p></div><div class="mh-file-preview-actions"><button type="button" class="btn secondary" data-audit-download>Download</button><button type="button" class="modal-close" data-audit-preview-close aria-label="Close preview">×</button></div></header>
+    <div class="mh-file-preview-body"><iframe src="${String(url).replace(/"/g,'&quot;')}" title="Secure document preview"></iframe></div>
+  </div>`;
+  document.body.append(modal);
+  const close = () => { if (modal.isConnected) { modal.close(); modal.remove(); } };
+  modal.querySelector('[data-audit-preview-close]').onclick = close;
+  modal.querySelector('[data-audit-download]').onclick = async event => {
+    event.currentTarget.disabled = true;
+    try { await downloadInside(url, rawName); } catch (error) { alert(error?.message || 'Unable to download file.'); }
+    finally { event.currentTarget.disabled = false; }
+  };
+  modal.addEventListener('cancel', event => { event.preventDefault(); close(); });
+  modal.addEventListener('click', event => { if (event.target === modal) close(); });
+  modal.showModal();
+}
+
+const nativeWindowOpen = window.open.bind(window);
+window.open = function auditSafeWindowOpen(url, target, features) {
+  const value = String(url || '');
+  if (value.includes('/storage/v1/object/sign/mh-client-documents/') || (value.includes('bogusfmvdrlvxscopgaw.supabase.co/storage/') && value.includes('token='))) {
+    openSignedPreview(value);
+    return null;
+  }
+  return nativeWindowOpen(url, target, features);
+};
+
 document.addEventListener('click', event => {
   const existing = event.target.closest?.('[data-client-id]');
   const add = event.target.closest?.('[data-add-client]');
