@@ -1,4 +1,5 @@
 import { NAV, CLIENT_TABS, esc, disconnectedRepository, todayKey, parseISO, dateText, isoDate, monthDays, longDate, timeLabel, hydrate, serializable } from './core.js';
+import { clientSearchMarkup, clientResultsMarkup, clientResultContent, clientSortDirectionOptions, clientSortDescription } from './client-search.js';
 import { Dialogs } from './dialogs.js';
 import { shell, TOOLS, icon, empty, note, pending, saveFooter, options, input, dateInput, select, textArea, clientForm, calendarMarkup } from './views.js';
 
@@ -9,7 +10,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   const now = new Date();
   const state = {
     route: 'dashboard', month: new Date(now.getFullYear(), now.getMonth(), 1, 12), events: [], calendarToken: 0,
-    search: { query: '', product: '', agent: '', birthYear: '', rows: null, error: '', message: '', token: 0, cursor: null, nextCursor: null },
+    search: { query: '', product: '', agent: '', birthYear: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', token: 0, cursor: null, nextCursor: null },
     destroyed: false
   };
   const connected = repository.connected === true;
@@ -19,7 +20,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
 
   function pageBody(route) {
     if (route === 'dashboard') return `<div id="calendar-host"></div><div class="metric-grid">${['Clients', 'Appointments', 'Notifications', 'Documents'].map(label => `<div class="metric-card"><span>${label}</span><strong>—</strong><small>${connected ? 'Summary not loaded' : 'Not connected'}</small></div>`).join('')}</div><section class="panel-card dark-card"><h2>Quick Actions</h2><div class="quick-actions"><button type="button" class="btn secondary" data-add-client>Client Information</button><a class="btn secondary" href="#/clients">Search Clients</a><button type="button" class="btn secondary" data-new-appointment>Set Appointment</button><a class="btn secondary" href="#/communications">Communications</a></div></section>`;
-    if (route === 'clients') return `<section class="panel-card dark-card"><h2>Client Search</h2><p class="muted">Search first, then select a name. The client opens over this page, not in a new screen.</p><form id="client-search" class="search-form"><label class="field query-field"><span>Name, phone, email, or address</span><input name="query" autocomplete="off" value="${esc(state.search.query)}" placeholder="Search clients…"></label><label class="field"><span>Product</span><select name="product">${options([['', 'All Products'], 'Medicare', 'Life', 'Retirement'], state.search.product)}</select></label><label class="field"><span>Agent</span><select name="agent">${options([['', 'All Agents'], ...agents.map(a => [a.id, a.full_name])], state.search.agent)}</select></label><label class="field year-field"><span>Birth Year</span><input name="birthYear" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="YYYY" value="${esc(state.search.birthYear)}"></label><div class="search-actions"><button type="submit" class="btn primary">Search</button><button type="button" class="btn secondary" data-turn65>Turn 65</button><button type="button" class="btn secondary" data-reset-search>Clear</button></div></form></section><div id="client-results" aria-live="polite"></div>`;
+    if (route === 'clients') return clientSearchMarkup(state.search, agents);
     if (route === 'appointments') return '<div id="calendar-host"></div>';
     if (route === 'communications') return `<div class="panel-card dark-card"><h2>Communications</h2><div class="integration-grid">${['RingCentral Voice', 'Client Text Messages', 'Call Recordings'].map(x => `<div><h3>${x}</h3><span class="tag">Not connected</span></div>`).join('')}</div>${empty('No conversation selected', 'Calls, texts, and recordings are not connected to this framework.')}</div>`;
     if (route === 'notifications') return `<section class="panel-card dark-card">${empty('No notifications loaded', 'Form submissions and activity notifications require the new backend.')}</section>`;
@@ -47,6 +48,19 @@ export function createWorkspace(root, repository = disconnectedRepository) {
       form.elements.namedItem(key).addEventListener('input', e => state.search[key] = e.target.value);
       form.elements.namedItem(key).addEventListener('change', e => state.search[key] = e.target.value);
     }
+    const sortBy = form.elements.namedItem('sortBy');
+    const direction = form.elements.namedItem('sortDirection');
+    sortBy.onchange = () => {
+      state.search.sortBy = sortBy.value;
+      state.search.sortDirection = sortBy.value === 'created_at' ? 'desc' : 'asc';
+      direction.innerHTML = clientSortDirectionOptions(state.search.sortBy, state.search.sortDirection);
+      // Changing order alone must not populate the untouched Clients screen.
+      if (state.search.applied) form.requestSubmit();
+    };
+    direction.onchange = () => {
+      state.search.sortDirection = direction.value;
+      if (state.search.applied) form.requestSubmit();
+    };
     form.onsubmit = e => { e.preventDefault(); searchClients(false); };
     form.querySelector('[data-turn65]').onclick = () => {
       state.search.birthYear = String(new Date().getFullYear() - 65);
@@ -55,50 +69,60 @@ export function createWorkspace(root, repository = disconnectedRepository) {
     };
     form.querySelector('[data-reset-search]').onclick = () => {
       state.search.token++;
-      Object.assign(state.search, { query: '', product: '', agent: '', birthYear: '', rows: null, error: '', message: '', cursor: null, nextCursor: null });
+      Object.assign(state.search, { query: '', product: '', agent: '', birthYear: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', cursor: null, nextCursor: null });
       for (const key of ['query', 'product', 'agent', 'birthYear']) form.elements.namedItem(key).value = '';
+      sortBy.value = 'name';
+      direction.innerHTML = clientSortDirectionOptions('name', 'asc');
       drawResults();
       form.elements.query.focus();
     };
     drawResults();
   }
   async function searchClients(more = false) {
-    const s = state.search, token = ++s.token;
+    const s = state.search;
+    if (more && (s.loading || !s.nextCursor || !s.applied)) return;
+    const criteria = more ? { ...s.applied } : { query: s.query.trim(), product: s.product, agent: s.agent, birthYear: s.birthYear, sortBy: s.sortBy, sortDirection: s.sortDirection };
+    const token = ++s.token;
+    const cursor = more ? s.nextCursor : null;
     if (!more) { s.rows = null; s.nextCursor = null; }
-    s.error = ''; s.message = '';
-    if (!(s.query.trim() || s.product || s.agent || s.birthYear)) { s.message = 'Enter a search or select a filter. No full client list is loaded automatically.'; drawResults(); return; }
-    if (s.birthYear && !/^\d{4}$/.test(s.birthYear)) { s.error = 'Enter a four-digit birth year.'; drawResults(); return; }
-    s.message = 'Searching…'; drawResults();
+    s.error = ''; s.message = ''; s.loading = false;
+    if (!(criteria.query || criteria.product || criteria.agent || criteria.birthYear)) { s.applied = null; s.message = 'Enter a search or select a filter. No full client list is loaded automatically.'; drawResults(); return; }
+    if (criteria.birthYear && !/^\d{4}$/.test(criteria.birthYear)) { s.error = 'Enter a four-digit birth year.'; drawResults(); return; }
+    if (!more) s.applied = criteria;
+    s.loading = true; s.message = 'Searching…'; drawResults();
     try {
-      const result = await repository.searchClients({ query: s.query.trim(), product: s.product, agent: s.agent, birthYear: s.birthYear, limit: 50, cursor: more ? s.nextCursor : null });
+      const result = await repository.searchClients({ ...criteria, limit: 50, cursor });
       if (token !== s.token || state.destroyed) return;
       if (!result || !Array.isArray(result.rows)) throw new Error('Client search returned an invalid response.');
-      s.rows = more ? [...(s.rows || []), ...result.rows] : result.rows;
+      const rows = more ? [...(s.rows || []), ...result.rows] : result.rows;
+      s.rows = [...new Map(rows.map(row => [row.id, row])).values()];
       s.nextCursor = result.nextCursor || null;
-      s.message = s.rows.length ? `${s.rows.length} result${s.rows.length === 1 ? '' : 's'} displayed` : 'No matching clients found.';
+      s.message = (s.rows.length ? `${s.rows.length} result${s.rows.length === 1 ? '' : 's'} displayed` : 'No matching clients found.') + ` • ${clientSortDescription(criteria.sortBy, criteria.sortDirection)}`;
     } catch (e) {
       if (token !== s.token || state.destroyed) return;
       s.error = connected ? e.message || 'Search failed. Please retry.' : 'Search is not connected to the new database yet. No clients were loaded from the original CRM.';
       s.message = '';
+    } finally {
+      if (token === s.token && !state.destroyed) {
+        s.loading = false;
+        if (state.route === 'clients') drawResults();
+      }
     }
-    if (state.route === 'clients') drawResults();
   }
   function drawResults() {
     const host = root.querySelector('#client-results');
     if (!host) return;
-    const s = state.search;
-    host.innerHTML = `${s.error ? `<div class="notice error" role="alert">${esc(s.error)}</div>` : ''}${s.message ? `<p class="result-status">${esc(s.message)}</p>` : ''}${s.rows?.length ? `<div class="client-results-list">${s.rows.map(client => `<button type="button" class="client-result" data-client-id="${esc(client.id)}" aria-haspopup="dialog"><span><strong data-client-name>${esc([client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client record')}</strong><small data-client-phone>${esc(client.phone || client.email || '')}</small></span><span class="open-label">Open Client <b aria-hidden="true">›</b></span></button>`).join('')}</div>${s.nextCursor ? '<button class="btn secondary" type="button" data-more>Load more</button>' : ''}` : `<div class="panel-card dark-card">${empty('No client results displayed', 'Your searches and filters stay here while a client pop-up is open.')}</div>`}`;
+    host.setAttribute('aria-busy', String(state.search.loading));
+    host.innerHTML = clientResultsMarkup(state.search);
     host.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => openClient(button.dataset.clientId));
     host.querySelector('[data-more]')?.addEventListener('click', () => searchClients(true));
   }
   function patchClient(saved) {
     if (!state.search.rows) return;
     state.search.rows = state.search.rows.map(row => row.id === saved.id ? { ...row, ...saved } : row);
+    const record = state.search.rows.find(row => row.id === saved.id);
     const row = root.querySelector(`[data-client-id="${CSS.escape(saved.id)}"]`);
-    if (row) {
-      row.querySelector('[data-client-name]').textContent = [saved.first_name, saved.last_name].filter(Boolean).join(' ');
-      row.querySelector('[data-client-phone]').textContent = saved.phone || saved.email || '';
-    }
+    if (row && record) row.innerHTML = clientResultContent(record);
   }
   function wireTabs(node) {
     const buttons = Array.from(node.querySelectorAll('[data-tab]'));

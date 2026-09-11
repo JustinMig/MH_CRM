@@ -1,3 +1,4 @@
+import { makeClientSearch } from './client-search.js';
 import { createWorkspace } from './workspace.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 import { installAdminUsers } from './admin-users.js';
@@ -9,35 +10,8 @@ import { installCarrierVault } from './carriers-ui.js';
 const root = document.querySelector('#app');
 installPullToRefresh();
 
-// Keep the Clients screen fast: queries return at most 50 rows at a time.
-// A 51st row is requested only to determine whether a Load More button is needed.
-mhRepository.searchClients = async function ({ query = '', product = '', agent = '', birthYear = '', limit = 50, cursor = null }) {
-  const pageSize = Math.min(Math.max(Number(limit) || 50, 1), 50);
-  const offset = Math.max(Number(cursor) || 0, 0);
-  let q = supabase
-    .from('clients')
-    .select('id,first_name,last_name,phone,email,date_of_birth,products,assigned_agent_id,updated_at')
-    .order('last_name', { ascending: true })
-    .order('first_name', { ascending: true })
-    .order('id', { ascending: true });
-
-  if (query) {
-    const term = query.replace(/[,%]/g, ' ').trim();
-    q = q.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%,address1.ilike.%${term}%,city.ilike.%${term}%`);
-  }
-  if (product) q = q.contains('products', [String(product).toLowerCase()]);
-  if (agent) q = q.eq('assigned_agent_id', agent);
-  if (birthYear) q = q.gte('date_of_birth', `${birthYear}-01-01`).lte('date_of_birth', `${birthYear}-12-31`);
-
-  const { data, error } = await q.range(offset, offset + pageSize);
-  if (error) throw error;
-  const rows = data || [];
-  const hasMore = rows.length > pageSize;
-  return {
-    rows: rows.slice(0, pageSize),
-    nextCursor: hasMore ? String(offset + pageSize) : null
-  };
-};
+// Shared, paginated client search with location, status and creation-date sorting.
+mhRepository.searchClients = makeClientSearch(supabase);
 
 // Justin is the only current M&H user. The Agent filter is hidden, but the
 // search state still needs his ID so pressing Search with empty fields loads
