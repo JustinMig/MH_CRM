@@ -1,0 +1,40 @@
+/* Warm, high-contrast Medicare accordion headers. Loaded after the base Medicare styles. */
+[data-panel="medicare"]>details.field-group{
+  border-color:#c99a72;
+  border-left-width:1px;
+  background:#fffaf4;
+  box-shadow:0 3px 10px rgba(95,55,25,.10);
+}
+[data-panel="medicare"]>details.field-group>summary{
+  color:#111!important;
+  border-bottom-color:transparent;
+  text-shadow:none;
+}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary{background:#f6d7b0}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary{background:#f2c982}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary{background:#efb79f}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary{background:#e7c7a2}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary{background:#f0c3b8}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary{background:#e9b990}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(1)[open]>summary{background:#efc690}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(2)[open]>summary{background:#eab65c}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(3)[open]>summary{background:#e9a184}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(4)[open]>summary{background:#dcb688}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(5)[open]>summary{background:#e9aca0}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(6)[open]>summary{background:#dfa473}
+[data-panel="medicare"]>details.field-group[open]>summary{color:#111!important;border-bottom-color:#c99a72}
+[data-panel="medicare"]>details.field-group>summary::after,
+[data-panel="medicare"]>details.field-group[open]>summary::after{
+  background:rgba(255,255,255,.58);
+  border-color:rgba(78,45,20,.32);
+  color:#111;
+}
+[data-panel="medicare"]>details.field-group>.form-grid{
+  background:#fffaf4;
+  color:#111;
+}
+[data-panel="medicare"]>details.field-group>.form-grid .field>span,
+[data-panel="medicare"]>details.field-group>.form-grid label,
+[data-panel="medicare"]>details.field-group>.form-grid strong{
+  color:#111;
+}
