@@ -80,33 +80,65 @@ function setCredentialStatus(form, text, error = false) {
   status.classList.toggle('error', error);
 }
 
-async function credentialRequest(body) {
-  const { data, error } = await supabase.functions.invoke('medicare-gov-credentials', { body });
+async function invokeSecureFunction(name, body) {
+  const { data, error } = await supabase.functions.invoke(name, { body });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
   return data || {};
 }
 
-async function loadCredentials(form, clientId) {
-  setCredentialStatus(form, 'Loading encrypted Medicare.gov credentials…');
-  const data = await credentialRequest({ action: 'get', client_id: clientId });
-  const c = data.credentials || null;
-  if (!c) {
-    setCredentialStatus(form, 'No Medicare.gov credentials saved for this client.');
-    return;
-  }
-  const set = (name, value) => {
-    const field = form.elements.namedItem(name);
-    if (field) field.value = value == null ? '' : String(value);
-  };
-  set('medicare_gov_username', c.username);
-  set('medicare_gov_password', c.password);
-  set('medicare_gov_verification_type', c.verification_type);
-  set('medicare_gov_security_answer', c.security_answer);
-  if (c.verification_type === 'text') set('medicare_gov_verification_phone', c.verification_destination);
-  if (c.verification_type === 'email') set('medicare_gov_verification_email', c.verification_destination);
+const credentialRequest = body => invokeSecureFunction('medicare-gov-credentials', body);
+const sensitiveRequest = body => invokeSecureFunction('client-sensitive', body);
+
+function setValue(form, name, value) {
+  const field = form.elements.namedItem(name);
+  if (field) field.value = value == null ? '' : String(value);
+}
+
+function applyCredentials(form, c) {
+  if (!c) return false;
+  setValue(form, 'medicare_gov_username', c.username);
+  setValue(form, 'medicare_gov_password', c.password);
+  setValue(form, 'medicare_gov_verification_type', c.verification_type);
+  setValue(form, 'medicare_gov_security_answer', c.security_answer);
+  if (c.verification_type === 'text') setValue(form, 'medicare_gov_verification_phone', c.verification_destination);
+  if (c.verification_type === 'email') setValue(form, 'medicare_gov_verification_email', c.verification_destination);
   setVerificationVisibility(form, false);
-  setCredentialStatus(form, 'Encrypted Medicare.gov credentials loaded securely.');
+  return true;
+}
+
+function applySensitive(form, sensitive) {
+  if (!sensitive) return false;
+  setValue(form, 'ssn', sensitive.ssn);
+  setValue(form, 'medicare_number', sensitive.medicare_number);
+  setValue(form, 'medicaid_number', sensitive.medicaid_number);
+  return true;
+}
+
+async function loadSecureClientData(form, clientId) {
+  setCredentialStatus(form, 'Loading encrypted client information…');
+  const [credentialsResult, sensitiveResult] = await Promise.allSettled([
+    credentialRequest({ action: 'get', client_id: clientId }),
+    sensitiveRequest({ action: 'get', client_id: clientId }),
+  ]);
+
+  let credentialsLoaded = false;
+  let sensitiveLoaded = false;
+  const errors = [];
+
+  if (credentialsResult.status === 'fulfilled') credentialsLoaded = applyCredentials(form, credentialsResult.value.credentials || null);
+  else errors.push(credentialsResult.reason?.message || 'Medicare.gov credentials could not be loaded.');
+
+  if (sensitiveResult.status === 'fulfilled') sensitiveLoaded = applySensitive(form, sensitiveResult.value.sensitive || null);
+  else errors.push(sensitiveResult.reason?.message || 'Sensitive client identifiers could not be loaded.');
+
+  if (errors.length) {
+    setCredentialStatus(form, errors.join(' '), true);
+  } else if (credentialsLoaded || sensitiveLoaded) {
+    setCredentialStatus(form, 'Encrypted client identifiers and Medicare.gov credentials loaded securely.');
+  } else {
+    setCredentialStatus(form, 'No encrypted Medicare.gov credentials are saved for this client.');
+  }
 }
 
 function credentialsFromRecord(record = {}) {
@@ -125,8 +157,20 @@ function credentialsFromRecord(record = {}) {
   };
 }
 
+function sensitiveFromRecord(record = {}) {
+  return {
+    ssn: String(record.ssn || '').trim(),
+    medicare_number: String(record.medicare_number || '').trim(),
+    medicaid_number: String(record.medicaid_number || '').trim(),
+  };
+}
+
 function hasCredentialData(c) {
   return !!(c.username || c.password || c.verification_type || c.verification_destination || c.security_answer);
+}
+
+function hasSensitiveData(s) {
+  return !!(s.ssn || s.medicare_number || s.medicaid_number);
 }
 
 document.addEventListener('click', event => {
@@ -153,8 +197,8 @@ Dialogs.prototype.open = function patchedMedicareCredentialsOpen(options = {}) {
 
     form.inert = true;
     controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = true);
-    loadCredentials(form, dialogClientId)
-      .catch(error => setCredentialStatus(form, error?.message || 'Unable to load Medicare.gov credentials.', true))
+    loadSecureClientData(form, dialogClientId)
+      .catch(error => setCredentialStatus(form, error?.message || 'Unable to load encrypted client information.', true))
       .finally(() => {
         previousAttachForm(form);
         form.inert = false;
@@ -165,17 +209,36 @@ Dialogs.prototype.open = function patchedMedicareCredentialsOpen(options = {}) {
 };
 
 const baseSaveClient = mhRepository.saveClient.bind(mhRepository);
-mhRepository.saveClient = async function saveClientWithMedicareCredentials(record, ...args) {
+mhRepository.saveClient = async function saveClientWithSecureData(record, ...args) {
   const credentials = credentialsFromRecord(record);
+  const sensitive = sensitiveFromRecord(record);
   const saved = await baseSaveClient(record, ...args);
-  if (!saved?.id || !hasCredentialData(credentials)) return saved;
-  try {
-    await credentialRequest({ action: 'save', client_id: saved.id, credentials });
-    const dialog = Array.from(document.querySelectorAll('dialog.client-dialog')).at(-1);
-    const form = dialog?.querySelector('form.client-form');
-    if (form) setCredentialStatus(form, 'Medicare.gov credentials saved with encrypted secure storage.');
-  } catch (error) {
-    throw new Error(`Client information saved, but the Medicare.gov credentials were not saved securely: ${error?.message || 'Please retry.'}`);
+  if (!saved?.id) return saved;
+
+  const tasks = [];
+  const labels = [];
+  if (record?.id || hasCredentialData(credentials)) {
+    tasks.push(credentialRequest({ action: 'save', client_id: saved.id, credentials }));
+    labels.push('Medicare.gov credentials');
   }
+  if (record?.id || hasSensitiveData(sensitive)) {
+    tasks.push(sensitiveRequest({ action: 'save', client_id: saved.id, sensitive }));
+    labels.push('sensitive identifiers');
+  }
+  if (!tasks.length) return saved;
+
+  const results = await Promise.allSettled(tasks);
+  const failures = results
+    .map((result, index) => result.status === 'rejected' ? `${labels[index]}: ${result.reason?.message || 'save failed'}` : '')
+    .filter(Boolean);
+
+  const dialog = Array.from(document.querySelectorAll('dialog.client-dialog')).at(-1);
+  const form = dialog?.querySelector('form.client-form');
+  if (failures.length) {
+    if (form) setCredentialStatus(form, failures.join(' '), true);
+    throw new Error(`Client information saved, but protected data needs to be retried: ${failures.join(' ')}`);
+  }
+
+  if (form) setCredentialStatus(form, 'Sensitive identifiers and Medicare.gov credentials saved with encrypted secure storage.');
   return saved;
 };
