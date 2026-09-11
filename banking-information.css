@@ -33,9 +33,15 @@
 }
 
 .banking-panel-grid input,
+.banking-panel-grid textarea,
 .banking-method-field select {
   width: 100%;
   min-width: 0;
+}
+
+.banking-card-notes-field textarea {
+  min-height: 96px;
+  resize: vertical;
 }
 
 .banking-panel-grid small {
