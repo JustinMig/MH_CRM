@@ -63,20 +63,31 @@
 [data-panel="medicare"]>details.field-group>.form-grid strong{
   color:#111;
 }
-/* Keep the compact card-upload controls dark with high-contrast white text. */
+/* Dark action boxes always use white text for contrast. */
 [data-panel="medicare"] .medicare-card-manager,
 [data-panel="medicare"] .medicare-card-manager strong,
 [data-panel="medicare"] .medicare-card-manager span,
 [data-panel="medicare"] .medicare-card-manager label,
-[data-panel="medicare"] .medicare-card-manager .medicare-card-status{
+[data-panel="medicare"] .medicare-card-manager .medicare-card-status,
+[data-panel="medicare"] .soa-control-box,
+[data-panel="medicare"] .soa-control-box strong,
+[data-panel="medicare"] .soa-control-box span,
+[data-panel="medicare"] .soa-control-box label,
+[data-panel="medicare"] .soa-control-box p,
+[data-panel="medicare"] .soa-control-box .medicare-card-status{
   color:#fff!important;
 }
-[data-panel="medicare"] .medicare-card-manager .btn.secondary{
+[data-panel="medicare"] .medicare-card-manager .btn.secondary,
+[data-panel="medicare"] .soa-control-box .btn.secondary{
   background:#18324a;
   border-color:#365168;
   color:#fff!important;
 }
-[data-panel="medicare"] .medicare-card-manager .btn.danger{
+[data-panel="medicare"] .soa-control-box .btn.primary{
+  color:#fff!important;
+}
+[data-panel="medicare"] .medicare-card-manager .btn.danger,
+[data-panel="medicare"] .soa-control-box .btn.danger{
   background:#7f2f2f;
   border-color:#a95656;
   color:#fff!important;
