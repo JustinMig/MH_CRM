@@ -5,7 +5,7 @@ export const NAV = Object.freeze([
 ]);
 export const CLIENT_TABS = Object.freeze([
   ['information', 'Client Information'], ['medicare', 'Medicare'], ['doctors', 'Doctors'], ['medications', 'Medications'],
-  ['hospital_indemnity', 'Hospital Indemnity'], ['life', 'Life'], ['retirement', 'Retirement'], ['documents', 'Documents'], ['notes', 'Notes']
+  ['hospital_indemnity', 'Hospital Indemnity'], ['life', 'Life'], ['retirement', 'Retirement'], ['notes', 'Notes / Extras']
 ]);
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
