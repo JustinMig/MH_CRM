@@ -1,40 +1,69 @@
-/* Warm, high-contrast Medicare accordion headers. Loaded after the base Medicare styles. */
+/* Color-blind-friendly, high-contrast Medicare accordion headers. Loaded after the base Medicare styles. */
 [data-panel="medicare"]>details.field-group{
-  border-color:#c99a72;
+  border:1px solid #8a8178;
   border-left-width:1px;
-  background:#fffaf4;
-  box-shadow:0 3px 10px rgba(95,55,25,.10);
+  background:#fffdf8;
+  box-shadow:0 3px 10px rgba(45,39,32,.10);
 }
 [data-panel="medicare"]>details.field-group>summary{
   color:#111!important;
   border-bottom-color:transparent;
   text-shadow:none;
+  padding-left:52px!important;
 }
-[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary{background:#f6d7b0}
-[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary{background:#f2c982}
-[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary{background:#efb79f}
-[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary{background:#e7c7a2}
-[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary{background:#f0c3b8}
-[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary{background:#e9b990}
-[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(1)[open]>summary{background:#efc690}
-[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(2)[open]>summary{background:#eab65c}
-[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(3)[open]>summary{background:#e9a184}
-[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(4)[open]>summary{background:#dcb688}
-[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(5)[open]>summary{background:#e9aca0}
-[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(6)[open]>summary{background:#dfa473}
-[data-panel="medicare"]>details.field-group[open]>summary{color:#111!important;border-bottom-color:#c99a72}
+/* Use both color and a numbered marker so the sections never depend on color alone. */
+[data-panel="medicare"]>details.field-group>summary::before{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  width:25px;
+  height:25px;
+  display:grid;
+  place-items:center;
+  border:2px solid #111;
+  border-radius:50%;
+  background:#fff;
+  color:#111;
+  font-size:12px;
+  font-weight:950;
+  line-height:1;
+}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary{background:#f6df86}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary{background:#a9d6f5}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary{background:#f3b66e}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary{background:#c9b8e6}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary{background:#a8d8cf}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary{background:#e4c58b}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary::before{content:'1'}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary::before{content:'2'}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary::before{content:'3'}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary::before{content:'4'}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary::before{content:'5'}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary::before{content:'6'}
+[data-panel="medicare"]>details.field-group:nth-of-type(1)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(1)[open]>summary{background:#edcf58}
+[data-panel="medicare"]>details.field-group:nth-of-type(2)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(2)[open]>summary{background:#86c4ed}
+[data-panel="medicare"]>details.field-group:nth-of-type(3)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(3)[open]>summary{background:#eba14d}
+[data-panel="medicare"]>details.field-group:nth-of-type(4)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(4)[open]>summary{background:#b6a0da}
+[data-panel="medicare"]>details.field-group:nth-of-type(5)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(5)[open]>summary{background:#8bc8bc}
+[data-panel="medicare"]>details.field-group:nth-of-type(6)>summary:hover,[data-panel="medicare"]>details.field-group:nth-of-type(6)[open]>summary{background:#d7b36d}
+[data-panel="medicare"]>details.field-group[open]>summary{color:#111!important;border-bottom-color:#8a8178}
 [data-panel="medicare"]>details.field-group>summary::after,
 [data-panel="medicare"]>details.field-group[open]>summary::after{
-  background:rgba(255,255,255,.58);
-  border-color:rgba(78,45,20,.32);
+  background:#fff;
+  border:2px solid #111;
   color:#111;
 }
 [data-panel="medicare"]>details.field-group>.form-grid{
-  background:#fffaf4;
+  background:#fffdf8;
   color:#111;
 }
 [data-panel="medicare"]>details.field-group>.form-grid .field>span,
 [data-panel="medicare"]>details.field-group>.form-grid label,
 [data-panel="medicare"]>details.field-group>.form-grid strong{
   color:#111;
+}
+@media(max-width:700px){
+  [data-panel="medicare"]>details.field-group>summary{padding-left:48px!important}
+  [data-panel="medicare"]>details.field-group>summary::before{left:11px;width:24px;height:24px}
 }
