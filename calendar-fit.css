@@ -1,17 +1,29 @@
 /* Dashboard calendar viewport fitting.
-   The dashboard calendar uses the exact visible space left on the current screen,
-   so the full month remains visible without needing to scroll. */
+   Keep the full month visible without page scrolling, while giving the date cells
+   as much of the available screen height as possible. */
+.dashboard-fit-content {
+  padding-top: clamp(8px, 1.2vh, 14px);
+  padding-bottom: clamp(6px, 1vh, 10px);
+}
 .dashboard-fit-content > .page-heading {
-  margin-bottom: clamp(8px, 1.5vh, 18px);
+  margin-bottom: clamp(5px, .9vh, 10px);
+}
+.dashboard-fit-content > .page-heading .eyebrow {
+  display: none;
+}
+.dashboard-fit-content > .page-heading h1 {
+  margin: 0;
+  font-size: clamp(20px, 2.5vh, 24px);
+  line-height: 1.05;
 }
 .dashboard-fit-content > .framework-banner {
-  margin-bottom: clamp(8px, 1.5vh, 18px);
-  padding-top: clamp(7px, 1vh, 11px);
-  padding-bottom: clamp(7px, 1vh, 11px);
+  margin-bottom: clamp(5px, .9vh, 10px);
+  padding-top: clamp(5px, .8vh, 8px);
+  padding-bottom: clamp(5px, .8vh, 8px);
 }
 
 .dashboard-calendar-host {
-  height: var(--dashboard-calendar-fit-height, calc(100dvh - 210px));
+  height: var(--dashboard-calendar-fit-height, calc(100dvh - 185px));
   min-height: 0;
 }
 .dashboard-calendar-host .dashboard-calendar {
@@ -19,44 +31,61 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: clamp(5px, 1vh, 12px);
+  gap: clamp(4px, .65vh, 7px);
 }
 .dashboard-calendar-host .calendar-queues {
   margin: 0;
-  gap: clamp(6px, .8vw, 12px);
+  gap: clamp(5px, .7vw, 9px);
 }
 .dashboard-calendar-host .today-queue,
 .dashboard-calendar-host .reschedule-queue {
-  min-height: clamp(38px, 5.2vh, 52px);
-  padding: clamp(6px, 1.2vh, 15px) clamp(8px, 1.3vw, 18px);
+  min-height: clamp(34px, 4.3vh, 42px);
+  padding: clamp(4px, .7vh, 8px) clamp(7px, 1vw, 12px);
 }
 .dashboard-calendar-host .calendar-card {
   height: 100%;
   min-height: 0;
-  padding: clamp(7px, 1.45vh, 16px);
+  padding: clamp(5px, .8vh, 9px);
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
 }
+
+/* The dashboard heading already identifies the page, so remove duplicate calendar
+   title/legend space and give that height back to the day boxes. */
+.dashboard-calendar-host .calendar-head > div:first-child {
+  display: none;
+}
 .dashboard-calendar-host .calendar-head {
   min-height: 0;
-  gap: clamp(5px, .9vh, 12px);
+  display: block;
+  margin: 0;
 }
-.dashboard-calendar-host .calendar-legend {
-  margin-top: clamp(1px, .55vh, 6px);
+.dashboard-calendar-host .calendar-actions {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+.dashboard-calendar-host .calendar-actions > .btn {
+  flex: 1 1 auto;
 }
 .dashboard-calendar-host .calendar-actions .btn {
-  min-height: clamp(30px, 4vh, 34px);
-  padding-top: clamp(4px, .7vh, 7px);
-  padding-bottom: clamp(4px, .7vh, 7px);
+  min-height: clamp(28px, 3.6vh, 32px);
+  padding: 3px 7px;
+}
+.dashboard-calendar-host .calendar-controls {
+  flex: 0 0 auto;
 }
 .dashboard-calendar-host .calendar-month {
-  margin: clamp(3px, 1vh, 12px) 0;
-  font-size: clamp(14px, 2vh, 17px);
-  line-height: 1.1;
+  margin: clamp(2px, .55vh, 5px) 0;
+  font-size: clamp(14px, 1.8vh, 16px);
+  line-height: 1.05;
 }
 .dashboard-calendar-host .calendar-status {
-  margin: 0 0 clamp(3px, .8vh, 10px);
-  line-height: 1.25;
+  margin: 0 0 2px;
+  line-height: 1.15;
 }
 .dashboard-calendar-host .calendar-grid {
   height: 100%;
@@ -65,51 +94,53 @@
   grid-auto-rows: minmax(0, 1fr);
 }
 .dashboard-calendar-host .calendar-weekday {
-  padding-top: clamp(3px, .8vh, 8px);
-  padding-bottom: clamp(3px, .8vh, 8px);
+  padding: clamp(2px, .45vh, 5px) 2px;
 }
 .dashboard-calendar-host .calendar-day {
   min-height: 0 !important;
   height: auto;
   overflow: hidden;
-  padding: clamp(2px, .65vh, 6px);
+  padding: clamp(4px, .7vh, 7px);
+}
+.dashboard-calendar-host .day-number {
+  font-size: clamp(13px, 1.7vh, 15px);
 }
 .dashboard-calendar-host .day-events {
   min-height: 0;
   overflow: hidden;
+  margin-top: clamp(3px, .5vh, 5px);
 }
 .dashboard-calendar-host .calendar-event {
   min-height: 0;
-  padding: clamp(2px, .45vh, 4px) 5px;
+  padding: clamp(2px, .35vh, 4px) 5px;
 }
 
-/* Short screens trade full event text for dots, while preserving every date cell. */
+/* Short screens preserve the bigger date cells by simplifying event detail first. */
 @media (max-height: 760px) {
+  .dashboard-fit-content {
+    padding-top: 7px;
+    padding-bottom: 5px;
+  }
   .dashboard-fit-content > .page-heading {
-    margin-bottom: 8px;
+    margin-bottom: 5px;
   }
   .dashboard-fit-content > .page-heading h1 {
-    font-size: 21px;
-    margin-top: 0;
-  }
-  .dashboard-fit-content > .page-heading .eyebrow {
-    display: none;
+    font-size: 20px;
   }
   .dashboard-fit-content > .framework-banner {
-    margin-bottom: 8px;
-    padding: 7px 10px;
-    font-size: 11px;
+    margin-bottom: 5px;
+    padding: 5px 8px;
+    font-size: 10px;
   }
   .dashboard-calendar-host .calendar-event:nth-child(n+2) {
     display: none;
   }
   .dashboard-calendar-host .calendar-day {
-    padding: 3px;
+    padding: 4px;
   }
 }
 
 @media (max-height: 650px) {
-  .dashboard-calendar-host .calendar-legend,
   .dashboard-calendar-host .calendar-status {
     display: none;
   }
@@ -128,61 +159,66 @@
     height: 5px;
   }
   .dashboard-calendar-host .calendar-weekday {
-    padding: 3px 0;
+    padding: 2px 0;
   }
 }
 
 @media (max-width: 720px) {
+  .dashboard-fit-content {
+    padding-top: 7px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 5px;
+  }
+  .dashboard-fit-content > .page-heading {
+    margin-bottom: 5px;
+  }
   .dashboard-calendar-host .calendar-card {
-    padding: clamp(6px, 1.1vh, 10px);
+    padding: 5px;
   }
   .dashboard-calendar-host .calendar-queues {
-    gap: 6px;
+    gap: 5px;
   }
   .dashboard-calendar-host .today-queue,
   .dashboard-calendar-host .reschedule-queue {
-    min-height: clamp(36px, 5.2vh, 46px);
-    padding: 5px 4px;
-  }
-  .dashboard-calendar-host .calendar-head {
-    gap: 5px;
+    min-height: clamp(32px, 4.2vh, 38px);
+    padding: 3px 4px;
   }
   .dashboard-calendar-host .calendar-actions {
-    gap: 4px;
-  }
-  .dashboard-calendar-host .calendar-actions .btn {
-    min-height: 30px;
-    padding: 4px 6px;
-  }
-  .dashboard-calendar-host .calendar-controls {
     gap: 3px;
   }
+  .dashboard-calendar-host .calendar-actions .btn {
+    min-height: 28px;
+    padding: 3px 5px;
+  }
+  .dashboard-calendar-host .calendar-controls {
+    gap: 2px;
+  }
   .dashboard-calendar-host .calendar-month {
-    margin: 3px 0;
+    margin: 2px 0;
   }
   .dashboard-calendar-host .calendar-status {
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .dashboard-calendar-host .calendar-day {
     min-height: 0 !important;
-    padding: 2px;
+    padding: 3px;
+  }
+  .dashboard-calendar-host .day-number {
+    font-size: 13px;
   }
 }
 
 @media (max-width: 420px) {
-  .dashboard-fit-content {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
   .dashboard-fit-content > .page-heading {
-    gap: 7px;
+    gap: 6px;
   }
   .dashboard-fit-content > .page-heading h1 {
-    font-size: 19px;
+    font-size: 18px;
   }
   .dashboard-fit-content > .page-heading .btn {
-    min-height: 36px;
-    padding: 7px 9px;
+    min-height: 34px;
+    padding: 6px 8px;
   }
   .dashboard-calendar-host .calendar-weekday {
     font-size: 9px;
