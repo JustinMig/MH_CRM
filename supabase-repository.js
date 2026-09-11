@@ -18,6 +18,8 @@ export const mhRepository = {
   agents: [],
   user: null,
   profile: null,
+  lastSavedClientId: null,
+  lastSaveWasInsert: false,
   async initialize() {
     const { data: { session } } = await supabase.auth.getSession();
     this.user = session?.user || null;
@@ -74,33 +76,87 @@ export const mhRepository = {
       part_a_date: medicare?.part_a_date || '', part_b_date: medicare?.part_b_date || '', medicaid_level: medicare?.medicaid_level || '', _medicare_id: medicare?.client_id || null,
       health_carrier: health?.carrier || '', health_plan_id: health?.plan_id || '', health_member_id: health?.member_id || '', health_effective_date: health?.effective_date || '', health_premium: health?.premium ?? '', _health_id: health?.id || null,
       life_carrier: life?.carrier || '', life_product: life?.product || life?.policy_type || '', life_policy_number: life?.policy_number || '', life_face_amount: life?.face_amount ?? '', life_premium: life?.premium ?? '', life_frequency: life?.premium_mode || '', life_effective_date: life?.effective_date || '', life_notes: life?.notes || '', _life_id: life?.id || null,
-      retirement_carrier: retirement?.carrier || '', retirement_product: retirement?.product || '', retirement_contract: retirement?.contract_number || '', retirement_effective_date: retirement?.effective_date || '', retirement_contribution: retirement?.contribution_amount ?? '', retirement_notes: retirement?.notes || '', _retirement_id: retirement?.id || null
+      retirement_carrier: retirement?.carrier || '', retirement_product: retirement?.product || '', retirement_contract: retirement?.contract_number || '', retirement_effective_date: retirement?.effective_date || '', retirement_contribution: retirement?.contribution_amount ?? '', retirement_value: retirement?.account_value ?? '', retirement_notes: retirement?.notes || '', _retirement_id: retirement?.id || null
     };
   },
 
-  async saveClient(record) {
+  async saveClient(record, options = {}) {
     const products = ['medicare','life','retirement'].filter(k => record[`product_${k}`]);
     const clientPayload = {
       assigned_agent_id: clean(record.assigned_agent_id) || this.user?.id || null,
       first_name: record.first_name?.trim(), last_name: record.last_name?.trim(), date_of_birth: clean(record.date_of_birth), gender: clean(record.gender),
       email: clean(record.email), phone: clean(record.phone), address1: clean(record.address), city: clean(record.city), county: clean(record.county), state: clean(record.state), zip_code: clean(record.zip),
-      drivers_license_number: clean(record.license_number), drivers_license_expiration: clean(record.license_expiration), drivers_license_state: clean(record.license_state), spouse: clean(record.spouse), products, notes: clean(record.notes), status: 'active'
+      drivers_license_number: clean(record.license_number), drivers_license_expiration: clean(record.license_expiration), drivers_license_state: clean(record.license_state), spouse: clean(record.spouse), products, notes: clean(record.notes)
     };
+
+    this.lastSavedClientId = null;
+    this.lastSaveWasInsert = false;
     let client;
-    if (record.id) { const { data, error } = await supabase.from('clients').update(clientPayload).eq('id', record.id).select().single(); if (error) throw error; client = data; }
-    else { const { data, error } = await supabase.from('clients').insert(clientPayload).select().single(); if (error) throw error; client = data; }
+    if (record.id) {
+      let query = supabase.from('clients').update(clientPayload).eq('id', record.id);
+      if (options?.expectedVersion) query = query.eq('updated_at', options.expectedVersion);
+      const { data, error } = await query.select().maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('This client was changed in another session. Close and reopen the client before saving so newer information is not overwritten.');
+      client = data;
+    } else {
+      const insertPayload = { ...clientPayload, status: clean(record.status) || 'active' };
+      const { data, error } = await supabase.from('clients').insert(insertPayload).select().single();
+      if (error) throw error;
+      client = data;
+      this.lastSaveWasInsert = true;
+    }
+    this.lastSavedClientId = client.id;
 
     const { error: medErr } = await supabase.from('medicare_details').upsert({ client_id: client.id, part_a_date: clean(record.part_a_date), part_b_date: clean(record.part_b_date), medicaid_level: clean(record.medicaid_level) }, { onConflict: 'client_id' });
     if (medErr) throw medErr;
-    if (record.health_carrier || record.health_plan_id || record.health_member_id || record.health_effective_date || record.health_premium) await saveOne('health_plans', client.id, record._health_id, { carrier: clean(record.health_carrier), plan_id: clean(record.health_plan_id), member_id: clean(record.health_member_id), effective_date: clean(record.health_effective_date), premium: money(record.health_premium), status: 'active' });
-    if (record.life_carrier || record.life_product || record.life_policy_number || record.life_face_amount || record.life_premium) await saveOne('life_policies', client.id, record._life_id, { carrier: clean(record.life_carrier), product: clean(record.life_product), policy_number: clean(record.life_policy_number), policy_type: clean(record.life_product), face_amount: money(record.life_face_amount), premium: money(record.life_premium), premium_mode: clean(record.life_frequency), effective_date: clean(record.life_effective_date), notes: clean(record.life_notes), status: 'active' });
-    if (record.retirement_carrier || record.retirement_product || record.retirement_contract || record.retirement_contribution) await saveOne('retirement_accounts', client.id, record._retirement_id, { carrier: clean(record.retirement_carrier), product: clean(record.retirement_product), contract_number: clean(record.retirement_contract), contribution_amount: money(record.retirement_contribution), effective_date: clean(record.retirement_effective_date), notes: clean(record.retirement_notes), status: 'active' });
-    return this.getClient(client.id);
+
+    let health = null;
+    let retirement = null;
+    if (record.health_carrier || record.health_plan_id || record.health_member_id || record.health_effective_date || record.health_premium) {
+      health = await saveOne('health_plans', client.id, record._health_id, { carrier: clean(record.health_carrier), plan_id: clean(record.health_plan_id), member_id: clean(record.health_member_id), effective_date: clean(record.health_effective_date), premium: money(record.health_premium), status: 'active' });
+    }
+    if (record.life_carrier || record.life_product || record.life_policy_number || record.life_face_amount || record.life_premium) {
+      await saveOne('life_policies', client.id, record._life_id, { carrier: clean(record.life_carrier), product: clean(record.life_product), policy_number: clean(record.life_policy_number), policy_type: clean(record.life_product), face_amount: money(record.life_face_amount), premium: money(record.life_premium), premium_mode: clean(record.life_frequency), effective_date: clean(record.life_effective_date), notes: clean(record.life_notes), status: 'active' });
+    }
+    if (record.retirement_carrier || record.retirement_product || record.retirement_contract || record.retirement_contribution || record.retirement_value) {
+      retirement = await saveOne('retirement_accounts', client.id, record._retirement_id, { carrier: clean(record.retirement_carrier), product: clean(record.retirement_product), contract_number: clean(record.retirement_contract), contribution_amount: money(record.retirement_contribution), account_value: money(record.retirement_value), effective_date: clean(record.retirement_effective_date), notes: clean(record.retirement_notes), status: 'active' });
+    }
+
+    return {
+      ...record,
+      ...client,
+      id: client.id,
+      address: client.address1 || record.address || '',
+      zip: client.zip_code || record.zip || '',
+      product_medicare: products.includes('medicare'),
+      product_life: products.includes('life'),
+      product_retirement: products.includes('retirement'),
+      _health_id: health?.id || record._health_id || null,
+      _retirement_id: retirement?.id || record._retirement_id || null,
+      retirement_value: retirement?.account_value ?? record.retirement_value ?? ''
+    };
   },
 
-  async listEvents({ start, end }) {
-    const { data, error } = await supabase.from('appointments').select('*').gte('event_date', start).lte('event_date', end).order('event_date').order('start_time');
-    if (error) throw error; return data || [];
+  async listEvents({ start, end, includeToday = false, includeReschedule = false }) {
+    let q = supabase.from('appointments').select('*').gte('event_date', start).lte('event_date', end).order('event_date').order('start_time');
+    const { data, error } = await q;
+    if (error) throw error;
+    let rows = data || [];
+    if (includeToday || includeReschedule) {
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      const filters = [];
+      if (includeToday) filters.push(`event_date.eq.${todayKey}`);
+      if (includeReschedule) filters.push('status.eq.needs_reschedule');
+      if (filters.length) {
+        const { data: extra, error: extraError } = await supabase.from('appointments').select('*').or(filters.join(',')).order('event_date').order('start_time');
+        if (extraError) throw extraError;
+        const seen = new Set(rows.map(row => row.id));
+        for (const row of extra || []) if (!seen.has(row.id)) { seen.add(row.id); rows.push(row); }
+      }
+    }
+    return rows;
   },
   async saveEvent(value) {
     const payload = { client_id: clean(value.client_id), assigned_agent_id: clean(value.assigned_agent_id) || this.user?.id || null, title: value.title?.trim() || `Appointment: ${value.person_name || 'Client'}`, event_type: value.event_type || 'appointment', event_date: value.event_date, start_time: clean(value.start_time), end_time: clean(value.end_time), notes: clean(value.notes), status: value.status || 'scheduled' };
