@@ -14,10 +14,7 @@ mhRepository.getClient = async function (id) {
     .maybeSingle();
   if (error) throw error;
 
-  return {
-    ...record,
-    medicare_notes: data?.notes || ''
-  };
+  return { ...record, medicare_notes: data?.notes || '' };
 };
 
 mhRepository.saveClient = async function (record, ...args) {
@@ -31,7 +28,7 @@ mhRepository.saveClient = async function (record, ...args) {
     .eq('client_id', saved.id);
   if (error) throw error;
 
-  return this.getClient(saved.id);
+  return { ...saved, medicare_notes: record?.medicare_notes || '' };
 };
 
 function addMedicareNotes(dialog) {
@@ -64,16 +61,11 @@ function addMedicareNotes(dialog) {
 
   const clientId = dialog.dataset.clientId || '';
   if (clientId) {
-    supabase
-      .from('medicare_details')
-      .select('notes')
-      .eq('client_id', clientId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !dialog.isConnected) return;
-        const textarea = notesGroup.querySelector('[name="medicare_notes"]');
-        if (textarea) textarea.value = data?.notes || '';
-      });
+    supabase.from('medicare_details').select('notes').eq('client_id', clientId).maybeSingle().then(({ data, error }) => {
+      if (error || !dialog.isConnected) return;
+      const textarea = notesGroup.querySelector('[name="medicare_notes"]');
+      if (textarea) textarea.value = data?.notes || '';
+    });
   }
 }
 
