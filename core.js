@@ -4,8 +4,8 @@ export const NAV = Object.freeze([
   ['agents', 'Agents & Admin'], ['settings', 'Settings']
 ]);
 export const CLIENT_TABS = Object.freeze([
-  ['information', 'Client Information'], ['medicare', 'Medicare'], ['life', 'Life'],
-  ['retirement', 'Retirement'], ['documents', 'Documents'], ['notes', 'Notes']
+  ['information', 'Client Information'], ['medicare', 'Medicare'], ['doctors', 'Doctors'], ['medications', 'Medications'],
+  ['hospital_indemnity', 'Hospital Indemnity'], ['life', 'Life'], ['retirement', 'Retirement'], ['documents', 'Documents'], ['notes', 'Notes']
 ]);
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -37,7 +37,7 @@ export function monthDays(year, month) {
   return Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 12));
 }
 export const longDate = key => {
-  const d = parseISO(key);
+  const d = parseISO(value);
   return d ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
 };
 export function timeLabel(value) {
