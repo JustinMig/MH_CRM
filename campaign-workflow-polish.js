@@ -108,11 +108,22 @@ function decorateCampaignHost(host) {
   if (!host?.isConnected) return;
 
   const create = host.querySelector('[data-cmp-new]');
-  if (create && create.dataset.iconTileReady !== 'true') {
-    create.dataset.iconTileReady = 'true';
-    create.classList.remove('btn', 'primary');
-    create.classList.add('cmp-new-campaign-tile');
-    create.innerHTML = '<span class="cmp-new-campaign-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5.5h10a2 2 0 0 1 2 2v11H5z"/><path d="M8 9h6M8 12h6M8 15h4M18.5 5v6M15.5 8h6"/></svg></span><strong>New Campaign</strong>';
+  if (create) {
+    if (create.dataset.iconTileReady !== 'true') {
+      create.dataset.iconTileReady = 'true';
+      create.classList.remove('btn', 'primary');
+      create.classList.add('cmp-new-campaign-tile');
+      create.innerHTML = '<span class="cmp-new-campaign-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5.5h10a2 2 0 0 1 2 2v11H5z"/><path d="M8 9h6M8 12h6M8 15h4M18.5 5v6M15.5 8h6"/></svg></span><strong>New Campaign</strong>';
+    }
+
+    const titlebar = create.closest('.cmp-titlebar');
+    const titleGroup = titlebar?.querySelector(':scope > div:first-child');
+    const heading = titleGroup?.querySelector('h2');
+    if (titlebar && titleGroup && heading) {
+      titlebar.classList.add('cmp-main-titlebar');
+      titleGroup.querySelector('p')?.remove();
+      if (create.parentElement !== titleGroup) heading.insertAdjacentElement('afterend', create);
+    }
   }
 
   [...host.querySelectorAll('.cmp-campaign-card')].forEach((card, index) => campaignTone(card, index));
