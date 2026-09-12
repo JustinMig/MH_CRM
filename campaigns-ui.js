@@ -1,4 +1,5 @@
 import { esc, dateText, dateISO, timeLabel } from './core.js';
+import { RETURN_TO_STEP_ONE, campaignUpdateOptions, openReturnToStepOne } from './campaign-return-step-one.js';
 import { CONTACT_OUTCOMES, CAMPAIGN_TOPICS, fullName, outcomeLabel, isScheduledOutcome, campaignToday, campaignTimestamp, appointmentSlots, slotIsBooked } from './campaigns-model.js';
 
 const options = (rows, selected = '') => rows.map(([value, label]) => `<option value="${esc(value)}"${String(value) === String(selected) ? ' selected' : ''}>${esc(label)}</option>`).join('');
@@ -36,7 +37,7 @@ export function createCampaignFeature({ repository, dialogs, openClient, onCalen
       <div class="cmp-person"><strong>${esc(fullName(row))}</strong><span>${esc(phone(row.phone))}</span><small>${esc(locationText(row))}</small><small>${esc(deceased ? 'Deceased — contact disabled' : (row.products || []).map(p => String(p).replaceAll('_',' ')).join(' · '))}</small></div>
       <div class="cmp-status"><span class="cmp-badge ${deceased ? 'is-deceased' : `is-${esc(row.contact_status)}`}">${esc(deceased ? 'Deceased' : outcomeLabel(row.contact_status))}</span><small>${Number(row.attempt_count || 0)} contact update${row.attempt_count === 1 ? '' : 's'}</small></div>
       <div class="cmp-activity"><small>Last contact: ${esc(campaignTimestamp(row.last_contacted_at))}</small><span>${esc(next)}</span>${row.next_action ? `<small>${esc(row.next_action)}</small>` : ''}${row.last_note ? `<p>${esc(row.last_note)}</p>` : ''}</div>
-      <div class="cmp-actions"><button type="button" class="btn secondary" data-client-id="${esc(row.client_id)}">Open Client</button><label class="cmp-update-select"><span class="cmp-sr-only">Spoke / Update — ${esc(fullName(row))}</span><select data-cmp-update="${esc(row.id)}"${locked ? ' disabled' : ''}><option value="">Spoke / Update</option>${options(CONTACT_OUTCOMES)}</select></label></div>
+      <div class="cmp-actions"><button type="button" class="btn secondary" data-client-id="${esc(row.client_id)}">Open Client</button><label class="cmp-update-select"><span class="cmp-sr-only">Spoke / Update — ${esc(fullName(row))}</span><select data-cmp-update="${esc(row.id)}"${locked ? ' disabled' : ''}><option value="">Spoke / Update</option>${options(campaignUpdateOptions(row))}</select></label></div>
     </article>`;
   }
   function render() {
@@ -124,6 +125,14 @@ export function createCampaignFeature({ repository, dialogs, openClient, onCalen
     d.attachForm(d.node.querySelector('.cmp-picker-save'));
   }
   function contactDialog(row, initialOutcome) {
+    if (initialOutcome === RETURN_TO_STEP_ONE) {
+      return openReturnToStepOne({ row, dialogs, api, onSaved: () => {
+        state.filter = 'all';
+        state.message = `${fullName(row)} returned to Step 1 / Total Clients. History and calendar items were kept.`;
+        document.dispatchEvent(new CustomEvent('cmp:returned-to-step-one'));
+        void loadDetail();
+      } });
+    }
     const campaign=state.campaign, operationId=crypto.randomUUID(); let blocks=[],availabilityToken=0,checking=false,available=false,timer=null,historyLoaded=false;
     const availableAgents=admin()?agents():agents().filter(a=>a.id===userId()||a.id===campaign.assigned_agent_id);
     const d=dialogs.open({title:'Spoke / Update',hint:fullName(row),kind:'campaign-dialog campaign-contact-dialog',body:`<form class="cmp-form" novalidate><label class="field"><span>Contact Result</span><select name="outcome">${options(CONTACT_OUTCOMES,initialOutcome)}</select></label><div class="cmp-selected-client"><strong>${esc(fullName(row))}</strong><span>${esc(phone(row.phone))} · ${esc(locationText(row))}</span><small>Existing client · ${esc(campaign.name)}</small></div><fieldset class="cmp-schedule" data-cmp-schedule><legend data-cmp-schedule-title>Set Appointment</legend><label class="field cmp-agent"><span>Agent Calendar</span><select name="agent_id">${options(availableAgents.map(a=>[a.id,a.full_name]),campaign.assigned_agent_id)}</select></label><div class="cmp-form-grid">${field('event_date','Date',dateText(campaignToday()),'data-date inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" required')}<label class="field"><span>Time</span><select name="start_time" required><option value="">Choose a date first</option></select></label><label class="field"><span>Duration</span><select name="duration">${options([[15,'15 minutes'],[30,'30 minutes'],[45,'45 minutes'],[60,'1 hour'],[90,'1½ hours'],[120,'2 hours']],30)}</select></label>${field('next_action','Next Action / More Information Needed','','maxlength="500" placeholder="What needs to be discussed or collected?"')}</div>${row.next_event_id&&row.next_event_status==='scheduled'?`<label class="cmp-replace"><input type="checkbox" name="replace_event"> Replace the previous scheduled item (${esc(dateText(row.next_event_date))} ${esc(timeLabel(String(row.next_event_time||'').slice(0,5)))})</label>`:''}<div class="cmp-availability" data-cmp-availability role="status">Checking calendar…</div><button type="button" class="cmp-back" data-cmp-retry>Recheck availability</button><p class="cmp-help">Times are Central Time. Available start times: 8:00 AM–8:00 PM. Booked times are disabled.</p></fieldset><label class="field"><span>Notes</span><textarea name="note" rows="4" maxlength="4000" placeholder="Conversation notes, purpose of appointment, or what to follow up on"></textarea></label><p class="cmp-help" data-cmp-save-help></p></form><details class="cmp-history"><summary>Previous Contact Updates</summary><div data-cmp-history>${empty('Open to view the latest 30 updates.')}</div></details>`,footer:footer(isScheduledOutcome(initialOutcome)?'Save & Add to Calendar':'Save Contact Update'),onSave:async form=>{

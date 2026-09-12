@@ -53,6 +53,9 @@ export function createCampaignRepository(db) {
     async history(memberId) {
       return check(await db.from('campaign_contact_log').select('id,outcome,note,next_action,created_at,appointment_id').eq('member_id', memberId).order('created_at', { ascending: false }).limit(30)) || [];
     },
+    async returnToStepOne({ p_member_id, p_operation_id, p_expected_version, p_note = '' }) {
+      return check(await db.rpc('campaign_return_to_step_one', { p_member_id, p_operation_id, p_expected_version, p_note }));
+    },
     async recordContact(payload) {
       if (!CONTACT_OUTCOMES.some(([key]) => key === payload.p_outcome)) throw new Error('Choose a contact result.');
       return check(await db.rpc('campaign_record_contact', payload));

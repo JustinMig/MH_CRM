@@ -8,7 +8,7 @@ export const CAMPAIGN_TOPICS = Object.freeze([
   ['health', 'Health'], ['retirement', 'Retirement'], ['other', 'Other']
 ]);
 export const isScheduledOutcome = value => value === 'appointment' || value === 'follow_up';
-export const outcomeLabel = value => CONTACT_OUTCOMES.find(([key]) => key === value)?.[1] || 'Not Contacted';
+export const outcomeLabel = value => value === 'return_step1' ? 'Returned to Step 1' : CONTACT_OUTCOMES.find(([key]) => key === value)?.[1] || 'Not Contacted';
 export const fullName = client => [client?.first_name, client?.last_name].filter(Boolean).join(' ').trim() || 'Client';
 const centralDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' });
 const centralStamp = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });

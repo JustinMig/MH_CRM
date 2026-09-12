@@ -24,6 +24,8 @@ const ICONS = {
 };
 
 let activeView = 'stage1';
+// The persisted correction requests Step 1 for the next server-backed render.
+document.addEventListener('cmp:returned-to-step-one', () => { activeView = 'stage1'; });
 
 function statusFor(card) {
   const badge = card.querySelector('.cmp-badge');
@@ -35,11 +37,8 @@ function statusFor(card) {
 function compactCard(card, status) {
   card.dataset.cmpStageStatus = status;
   card.setAttribute('aria-label', `${card.querySelector('.cmp-person strong')?.textContent || 'Client'} — ${STATUS_LABELS[status] || status}`);
-  const update = card.querySelector('[data-cmp-update]');
-  if (update && (status === 'appointment' || status === 'declined')) {
-    update.disabled = true;
-    update.title = status === 'appointment' ? 'Appointment set — completed' : 'Declined — completed';
-  }
+  // The canonical card controls permissions. Completed clients retain the
+  // Return to Step 1 action; archived/deceased clients remain disabled.
 }
 
 function viewMatches(status, view) {
