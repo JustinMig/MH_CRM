@@ -1,0 +1,28 @@
+.cmp-select-all-results{background:#d9e8f5!important;border-color:#9ebbd3!important;color:#244e6a!important;font-weight:850!important}
+.cmp-select-all-results:hover:not(:disabled){background:#cbdfee!important}
+
+.cmp-new-campaign-tile{appearance:none;width:96px;min-width:96px;min-height:74px;padding:8px;border:1px solid #c7a24f;border-radius:12px;background:#f3dfad;color:#654d19;display:grid;place-items:center;align-content:center;gap:5px;box-shadow:0 2px 5px #0000000a;cursor:pointer}
+.cmp-new-campaign-tile:hover{background:#ecd28f;border-color:#ad8736;transform:translateY(-1px)}
+.cmp-new-campaign-tile:focus-visible{outline:3px solid #c9ad67;outline-offset:2px}
+.cmp-new-campaign-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#fff7df;border:1px solid #dbc17f}
+.cmp-new-campaign-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cmp-new-campaign-tile strong{font-size:.68rem;line-height:1.05;text-align:center;white-space:normal}
+
+.cmp-campaign-card.cmp-tone-0{background:#eaf3fb;border-color:#bfd4e6}
+.cmp-campaign-card.cmp-tone-1{background:#eaf3ec;border-color:#bfd4c4}
+.cmp-campaign-card.cmp-tone-2{background:#f5efe2;border-color:#dfcfaa}
+.cmp-campaign-card.cmp-tone-3{background:#f0ecf7;border-color:#cec3df}
+.cmp-campaign-card.cmp-tone-4{background:#f7eaed;border-color:#dfc2c9}
+.cmp-campaign-card.cmp-tone-5{background:#e9f3f2;border-color:#bdd7d4}
+.cmp-campaign-card.cmp-tone-6{background:#eef0f8;border-color:#c7cce1}
+.cmp-campaign-card.cmp-tone-7{background:#f4ece6;border-color:#dbc9bb}
+.cmp-campaign-card[class*="cmp-tone-"]:hover{filter:brightness(.985);transform:translateY(-1px);box-shadow:0 4px 10px #0000000c}
+.cmp-campaign-card[class*="cmp-tone-"] .cmp-card-foot{border-top-color:#00000012}
+
+@media(max-width:620px){
+  .cmp-new-campaign-tile{width:82px;min-width:82px;min-height:64px;padding:6px}
+  .cmp-new-campaign-icon{width:29px;height:29px}
+  .cmp-new-campaign-icon svg{width:17px;height:17px}
+  .cmp-new-campaign-tile strong{font-size:.58rem}
+  .cmp-selectionbar .cmp-select-all-results{flex:1 1 100%;width:100%}
+}
