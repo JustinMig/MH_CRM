@@ -31,20 +31,9 @@
     margin: 0;
   }
 
+  /* Phone toolbar keeps only menu + action icons. Branding remains in the slide-out nav. */
   .top-brand {
-    flex: 0 0 38px;
-    width: 38px;
-    overflow: hidden;
-    gap: 0;
-  }
-
-  .top-brand img {
-    width: 36px;
-    height: 36px;
-  }
-
-  .top-brand strong {
-    display: none;
+    display: none !important;
   }
 
   .quick-tools {
@@ -100,15 +89,9 @@
     gap: 3px;
   }
 
-  .top .menu-toggle,
-  .top-brand {
+  .top .menu-toggle {
     flex-basis: 34px;
     width: 34px;
-  }
-
-  .top-brand img {
-    width: 32px;
-    height: 32px;
   }
 
   .quick-tool {
