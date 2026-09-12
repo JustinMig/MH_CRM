@@ -54,18 +54,17 @@ export function makeClientSearch(db) {
   };
 }
 const optionMarkup = (items, current) => items.map(([value, label]) => `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`).join('');
-export function clientSearchMarkup(s, agents = []) {
-  return `<section class="panel-card dark-card"><h2>Client Search</h2><p class="muted">Search first, then select a client to open their record without leaving your results.</p>
+export function clientSearchMarkup(s) {
+  return `<section class="panel-card dark-card client-search-panel" aria-label="Client search">
     <form id="client-search" class="search-form">
-      <label class="field query-field"><span>Name, phone, email, address, county, or state</span><input name="query" autocomplete="off" value="${esc(s.query)}" placeholder="Search clients…"></label>
+      <label class="field query-field"><span>Search Clients</span><input name="query" autocomplete="off" value="${esc(s.query)}" placeholder="Search clients…" enterkeyhint="search"></label>
       <label class="field"><span>Product / Status</span><select name="product">${optionMarkup([['', 'All Products / Statuses'], ['medicare', 'Medicare'], ['life', 'Life'], ['retirement', 'Retirement'], ['deceased', 'Deceased']], String(s.product || '').toLowerCase())}</select></label>
-      <label class="field"><span>Agent</span><select name="agent">${optionMarkup([['', 'All Agents'], ...agents.map(a => [a.id, a.full_name])], s.agent)}</select></label>
-      <label class="field year-field"><span>Birth Year</span><input name="birthYear" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="YYYY" value="${esc(s.birthYear)}"></label>
-      <div class="search-actions"><button type="submit" class="btn primary">Search</button><button type="button" class="btn secondary" data-turn65>Turn 65</button><button type="button" class="btn secondary" data-reset-search>Clear</button></div>
+      <input type="hidden" name="agent" value="${esc(s.agent || '')}">
+      <div class="search-actions"><button type="submit" class="btn primary">Search</button><button type="button" class="btn secondary" data-reset-search>Clear</button></div>
     </form>
   </section>
-  <section class="client-result-toolbar" aria-label="Sort client search results">
-    <div class="client-sort-intro"><strong>Search results</strong><small>Date Added uses the saved creation date. Dates and times are Central Time.</small></div>
+  <section class="client-result-toolbar" aria-label="Sort client search results" data-client-result-toolbar${s.applied ? '' : ' hidden'}>
+    <div class="client-sort-intro"><strong>Search results</strong></div>
     <label class="field"><span>Sort by</span><select name="sortBy" form="client-search" data-client-sort>${optionMarkup([['name','Client Name'],['state','State'],['county','County'],['created_at','Date Added']], s.sortBy || 'name')}</select></label>
     <label class="field"><span>Order</span><select name="sortDirection" form="client-search" data-client-sort-direction>${clientSortDirectionOptions(s.sortBy, s.sortDirection)}</select></label>
   </section>
@@ -119,6 +118,6 @@ export function clientResultContent(client) {
 }
 export function clientResultsMarkup(s) {
   const status = `${s.error ? `<div class="notice error" role="alert">${esc(s.error)}</div>` : ''}${s.message ? `<p class="result-status">${esc(s.message)}</p>` : ''}`;
-  if (!s.rows?.length) return `${status}<div class="panel-card dark-card"><div class="empty-state"><h3>${s.loading ? 'Searching clients…' : s.rows ? 'No matching clients' : 'No client results displayed'}</h3><p>${s.loading ? 'Loading your search results.' : 'Your searches and sort order stay here while a client popup is open.'}</p></div></div>`;
+  if (!s.rows?.length) return status;
   return `${status}<div class="client-results-list client-results-detailed">${s.rows.map(client => `<button type="button" class="client-result client-result-detailed" data-client-id="${esc(client.id)}" aria-haspopup="dialog">${clientResultContent(client)}</button>`).join('')}</div>${s.nextCursor ? `<button class="btn secondary" type="button" data-more${s.loading ? ' disabled' : ''}>${s.loading ? 'Loading…' : 'Load more'}</button>` : ''}`;
 }

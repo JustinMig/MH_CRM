@@ -19,7 +19,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   const now = new Date();
   const state = {
     route: 'dashboard', month: new Date(now.getFullYear(), now.getMonth(), 1, 12), events: [], calendarToken: 0,
-    search: { query: '', product: '', agent: '', birthYear: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', token: 0, cursor: null, nextCursor: null },
+    search: { query: '', product: '', agent: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', token: 0, cursor: null, nextCursor: null },
     destroyed: false
   };
   const connected = repository.connected === true;
@@ -59,7 +59,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
 
   function bindSearch() {
     const form = root.querySelector('#client-search');
-    for (const key of ['query', 'product', 'agent', 'birthYear']) {
+    for (const key of ['query', 'product', 'agent']) {
       form.elements.namedItem(key).addEventListener('input', e => state.search[key] = e.target.value);
       form.elements.namedItem(key).addEventListener('change', e => state.search[key] = e.target.value);
     }
@@ -77,15 +77,10 @@ export function createWorkspace(root, repository = disconnectedRepository) {
       if (state.search.applied) form.requestSubmit();
     };
     form.onsubmit = e => { e.preventDefault(); searchClients(false); };
-    form.querySelector('[data-turn65]').onclick = () => {
-      state.search.birthYear = String(new Date().getFullYear() - 65);
-      form.elements.birthYear.value = state.search.birthYear;
-      searchClients(false);
-    };
     form.querySelector('[data-reset-search]').onclick = () => {
       state.search.token++;
-      Object.assign(state.search, { query: '', product: '', agent: '', birthYear: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', cursor: null, nextCursor: null });
-      for (const key of ['query', 'product', 'agent', 'birthYear']) form.elements.namedItem(key).value = '';
+      Object.assign(state.search, { query: '', product: '', agent: '', sortBy: 'name', sortDirection: 'asc', applied: null, loading: false, rows: null, error: '', message: '', cursor: null, nextCursor: null });
+      for (const key of ['query', 'product', 'agent']) form.elements.namedItem(key).value = '';
       sortBy.value = 'name';
       direction.innerHTML = clientSortDirectionOptions('name', 'asc');
       drawResults();
@@ -96,13 +91,12 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   async function searchClients(more = false) {
     const s = state.search;
     if (more && (s.loading || !s.nextCursor || !s.applied)) return;
-    const criteria = more ? { ...s.applied } : { query: s.query.trim(), product: s.product, agent: s.agent, birthYear: s.birthYear, sortBy: s.sortBy, sortDirection: s.sortDirection };
+    const criteria = more ? { ...s.applied } : { query: s.query.trim(), product: s.product, agent: s.agent, sortBy: s.sortBy, sortDirection: s.sortDirection };
     const token = ++s.token;
     const cursor = more ? s.nextCursor : null;
     if (!more) { s.rows = null; s.nextCursor = null; }
     s.error = ''; s.message = ''; s.loading = false;
-    if (!(criteria.query || criteria.product || criteria.agent || criteria.birthYear)) { s.applied = null; s.message = 'Enter a search or select a filter. No full client list is loaded automatically.'; drawResults(); return; }
-    if (criteria.birthYear && !/^\d{4}$/.test(criteria.birthYear)) { s.error = 'Enter a four-digit birth year.'; drawResults(); return; }
+    if (!(criteria.query || criteria.product || criteria.agent)) { s.applied = null; s.message = 'Enter a search or choose a product / status.'; drawResults(); return; }
     if (!more) s.applied = criteria;
     s.loading = true; s.message = 'Searching…'; drawResults();
     try {
@@ -127,6 +121,8 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   function drawResults() {
     const host = root.querySelector('#client-results');
     if (!host) return;
+    const toolbar = root.querySelector('[data-client-result-toolbar]');
+    if (toolbar) toolbar.hidden = !state.search.applied;
     host.setAttribute('aria-busy', String(state.search.loading));
     host.innerHTML = clientResultsMarkup(state.search);
     host.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => openClient(button.dataset.clientId));
