@@ -13,8 +13,11 @@ async function waitForSearchSettled(host, previousCount) {
     if (!host?.isConnected) return false;
     const busy = host.getAttribute('aria-busy') === 'true';
     const count = host.querySelectorAll('button.client-result[data-client-id]').length;
+    const selectionCount = host.querySelectorAll('.cmp-search-checkbox input[type="checkbox"]').length;
     const more = host.querySelector('[data-more]');
-    if (!busy && (count > previousCount || !more)) return true;
+    const resultSetChanged = count > previousCount || !more;
+    const selectionReady = count === 0 || selectionCount >= count;
+    if (!busy && resultSetChanged && selectionReady) return true;
     await sleep(75);
   }
   return false;
