@@ -45,30 +45,39 @@ function counterButton(view, label, count) {
   button.type = 'button';
   button.className = 'cmp-counter-card';
   button.dataset.cmpCounterView = view;
-  button.setAttribute('aria-pressed', String(activeView === view));
   button.innerHTML = `<strong>${count}</strong><span>${label}</span>`;
   return button;
 }
 
+function syncCounterState(counters) {
+  counters?.querySelectorAll('[data-cmp-counter-view]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.cmpCounterView === activeView));
+  });
+}
+
 function buildCounters(root, grouped, total) {
-  const oldStats = root.querySelector('.cmp-stats');
-  if (!oldStats) return null;
   const completed = grouped.appointment.length + grouped.declined.length;
-  const counters = document.createElement('div');
-  counters.className = 'cmp-counter-grid';
-  counters.dataset.cmpCounters = 'true';
-  counters.append(
+  let counters = root.querySelector('[data-cmp-counters]');
+  if (!counters) {
+    const oldStats = root.querySelector('.cmp-stats');
+    if (!oldStats) return null;
+    counters = document.createElement('div');
+    counters.className = 'cmp-counter-grid';
+    counters.dataset.cmpCounters = 'true';
+    oldStats.replaceWith(counters);
+  }
+  counters.replaceChildren(
     counterButton('all', 'Total Clients', total),
     counterButton('voicemail', 'Voicemail Left', grouped.voicemail.length),
     counterButton('no_answer', 'No Answer', grouped.no_answer.length),
     counterButton('follow_up', 'Follow Up', grouped.follow_up.length),
     counterButton('completed', 'Completed', completed)
   );
-  oldStats.replaceWith(counters);
+  syncCounterState(counters);
   return counters;
 }
 
-function renderView(root, members, cards, grouped) {
+function renderView(root, members, cards) {
   const oldStage = root.querySelector('.cmp-stage');
   const filters = root.querySelector('.cmp-member-filters');
   const resultsFoot = root.querySelector('.cmp-results-foot');
@@ -118,13 +127,24 @@ function renderView(root, members, cards, grouped) {
     }
     separate.append(head, rows);
     members.append(separate);
-    head.querySelector('[data-cmp-view-back]').onclick = () => {
-      activeView = 'all';
-      scheduleEnhance(true);
-    };
+    head.querySelector('[data-cmp-view-back]').onclick = () => switchView(root, members, cards, 'all');
   }
 
-  if (resultsFoot) resultsFoot.querySelector('span')?.replaceChildren(document.createTextNode(`${shown.length} displayed`));
+  if (resultsFoot) {
+    const count = resultsFoot.querySelector('span');
+    if (count) count.textContent = `${shown.length} displayed`;
+  }
+}
+
+function switchView(root, members, cards, view) {
+  activeView = view;
+  const grouped = { not_contacted: [], no_answer: [], voicemail: [], follow_up: [], appointment: [], declined: [] };
+  cards.forEach(card => (grouped[card.dataset.cmpStageStatus] || (grouped[card.dataset.cmpStageStatus] = [])).push(card));
+  const counters = buildCounters(root, grouped, cards.length);
+  renderView(root, members, cards);
+  counters?.querySelectorAll('[data-cmp-counter-view]').forEach(button => {
+    button.onclick = () => switchView(root, members, cards, button.dataset.cmpCounterView || 'all');
+  });
 }
 
 function enhanceCampaign(root) {
@@ -132,51 +152,21 @@ function enhanceCampaign(root) {
   const campaignRoot = root.matches?.('.campaigns-root') ? root : root.closest?.('.campaigns-root') || root.querySelector?.('.campaigns-root');
   if (!campaignRoot) return;
   const members = campaignRoot.querySelector('.cmp-members');
-  if (!members) return;
+  if (!members || members.dataset.cmpStageLayout === 'true') return;
 
-  const rawCards = [...members.querySelectorAll('.cmp-member')];
-  if (!rawCards.length) return;
-  if (members.dataset.cmpStageLayout === 'true' && !members.dataset.cmpForceRebuild) return;
-  delete members.dataset.cmpForceRebuild;
-
-  const cards = rawCards;
-  const grouped = { not_contacted: [], no_answer: [], voicemail: [], follow_up: [], appointment: [], declined: [] };
-  for (const card of cards) {
-    const status = statusFor(card);
-    compactCard(card, status);
-    (grouped[status] || (grouped[status] = [])).push(card);
-  }
-
-  const counters = buildCounters(campaignRoot, grouped, cards.length);
-  counters?.querySelectorAll('[data-cmp-counter-view]').forEach(button => {
-    button.onclick = () => {
-      activeView = button.dataset.cmpCounterView || 'all';
-      members.dataset.cmpForceRebuild = 'true';
-      // Rebuild with the same live card nodes so Open Client and Spoke / Update handlers remain intact.
-      members.replaceChildren(...cards);
-      enhanceCampaign(campaignRoot);
-    };
-  });
-
-  renderView(campaignRoot, members, cards, grouped);
+  const cards = [...members.querySelectorAll(':scope > .cmp-member')];
+  if (!cards.length) return;
+  for (const card of cards) compactCard(card, statusFor(card));
+  switchView(campaignRoot, members, cards, activeView);
 }
 
 let queued = false;
-function scheduleEnhance(force = false) {
+function scheduleEnhance() {
   if (queued) return;
   queued = true;
   queueMicrotask(() => {
     queued = false;
-    document.querySelectorAll('.campaigns-root .cmp-members').forEach(members => {
-      if (force) {
-        const currentCards = [...members.querySelectorAll('.cmp-member')];
-        if (currentCards.length) {
-          members.replaceChildren(...currentCards);
-          members.dataset.cmpForceRebuild = 'true';
-        }
-      }
-      enhanceCampaign(members);
-    });
+    document.querySelectorAll('.campaigns-root .cmp-members').forEach(enhanceCampaign);
   });
 }
 
