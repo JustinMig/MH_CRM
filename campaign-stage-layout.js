@@ -9,7 +9,6 @@ const STATUS_LABELS = {
 
 const VIEW_LABELS = {
   stage1: 'Stage 1 — Not Contacted',
-  all: 'All Campaign Clients',
   voicemail: 'Voicemail Left',
   no_answer: 'No Answer',
   follow_up: 'Follow Up / More Info Needed',
@@ -37,7 +36,6 @@ function compactCard(card, status) {
 
 function viewMatches(status, view) {
   if (view === 'stage1') return status === 'not_contacted';
-  if (view === 'all') return true;
   if (view === 'completed') return status === 'appointment' || status === 'declined';
   return status === view;
 }
@@ -57,8 +55,9 @@ function syncCounterState(counters) {
   });
 }
 
-function buildCounters(root, grouped, total) {
+function buildCounters(root, grouped) {
   const completed = grouped.appointment.length + grouped.declined.length;
+  const stageOneCount = grouped.not_contacted.length;
   let counters = root.querySelector('[data-cmp-counters]');
   if (!counters) {
     const oldStats = root.querySelector('.cmp-stats');
@@ -69,7 +68,7 @@ function buildCounters(root, grouped, total) {
     oldStats.replaceWith(counters);
   }
   counters.replaceChildren(
-    counterButton('all', 'Total Clients', total),
+    counterButton('stage1', 'Total Clients', stageOneCount),
     counterButton('voicemail', 'Voicemail Left', grouped.voicemail.length),
     counterButton('no_answer', 'No Answer', grouped.no_answer.length),
     counterButton('follow_up', 'Follow Up', grouped.follow_up.length),
@@ -146,7 +145,7 @@ function switchView(root, members, cards, view) {
   activeView = view;
   const grouped = { not_contacted: [], no_answer: [], voicemail: [], follow_up: [], appointment: [], declined: [] };
   cards.forEach(card => (grouped[card.dataset.cmpStageStatus] || (grouped[card.dataset.cmpStageStatus] = [])).push(card));
-  const counters = buildCounters(root, grouped, cards.length);
+  const counters = buildCounters(root, grouped);
   renderView(root, members, cards);
   counters?.querySelectorAll('[data-cmp-counter-view]').forEach(button => {
     button.onclick = () => switchView(root, members, cards, button.dataset.cmpCounterView || 'stage1');
