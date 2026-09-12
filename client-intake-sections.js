@@ -34,14 +34,19 @@ function organizePersonalContact(form) {
   const personalGrid = personalDetails?.querySelector(':scope > .form-grid');
   if (!personalGrid) return;
 
+  const originalChildren = Array.from(personalGrid.children);
   const boxes = [];
+  const moved = new Set();
+
   for (const group of GROUPS) {
     const fields = group.fields.map(name => fieldFor(form, name)).filter(Boolean);
+    fields.forEach(field => moved.add(field));
     if (fields.length) boxes.push(sectionBox(group, fields));
   }
 
   const underwriting = personalGrid.querySelector('[data-personal-underwriting]');
   if (underwriting) {
+    moved.add(underwriting);
     underwriting.classList.add('intake-section-underwriting');
     const addressIndex = Math.max(0, boxes.findIndex(box => box.dataset.intakeSection === 'address'));
     boxes.splice(addressIndex + 1, 0, underwriting);
@@ -49,8 +54,14 @@ function organizePersonalContact(form) {
 
   const products = personalGrid.querySelector('.product-choices');
   if (products) {
+    moved.add(products);
     products.classList.add('intake-products-box');
     boxes.push(products);
+  }
+
+  const leftovers = originalChildren.filter(child => !moved.has(child) && child.isConnected);
+  if (leftovers.length) {
+    boxes.push(sectionBox({ key: 'other', title: 'Additional Client Details' }, leftovers));
   }
 
   personalGrid.replaceChildren(...boxes);
