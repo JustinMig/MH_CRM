@@ -4,6 +4,26 @@ import { esc } from './core.js';
 // The view is SECURITY INVOKER: it uses the existing clients table permissions.
 export const CLIENT_RESULT_FIELDS = 'id,first_name,last_name,phone,email,date_of_birth,county,state,products,status,created_at,updated_at,assigned_agent_id';
 const sorts = new Set(['name', 'state', 'county', 'created_at']);
+const ageDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Chicago', calendar: 'gregory', numberingSystem: 'latn',
+  year: 'numeric', month: '2-digit', day: '2-digit'
+});
+/** Inclusive DOB bounds, recalculated per search, not stored as product tags.
+ * T65 covers the whole current calendar year; 65+ means already 65 today.
+ * Clients without a DOB do not match the database date comparisons.
+ */
+export function clientAgeBounds(filter, now = new Date()) {
+  if (!['t65', '65plus'].includes(filter)) return null;
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error('The current date could not be determined. Check your device date and retry.');
+  const parts = Object.fromEntries(ageDateFormatter.formatToParts(now).map(p => [p.type, p.value]));
+  const year = Number(parts.year) - 65;
+  if (filter === 't65') return { min: `${year}-01-01`, max: `${year}-12-31` };
+  // Feb 29 today may map to a non-leap birth year. Clamp to Feb 28, not Mar 1.
+  const lastDay = new Date(Date.UTC(year, Number(parts.month), 0)).getUTCDate();
+  const day = String(Math.min(Number(parts.day), lastDay)).padStart(2, '0');
+  return { min: null, max: `${year}-${parts.month}-${day}` };
+}
+
 export function normalizeClientSort(sortBy = 'name', sortDirection) {
   const key = sorts.has(sortBy) ? sortBy : 'name';
   const direction = ['asc', 'desc'].includes(sortDirection) ? sortDirection : key === 'created_at' ? 'desc' : 'asc';
@@ -20,7 +40,7 @@ export function clientSearchOrders(sortBy, sortDirection) {
   order.push(['first_name_sort', sort.sortBy === 'name' ? ascending : true], ['id', true]);
   return order;
 }
-export function makeClientSearch(db) {
+export function makeClientSearch(db, { now = () => new Date() } = {}) {
   return async function searchClients({ query = '', product = '', agent = '', birthYear = '', sortBy = 'name', sortDirection, limit = 50, cursor = null } = {}) {
     const pageSize = Math.min(Math.max(Math.trunc(Number(limit)) || 50, 1), 50);
     const offsetValue = Number(cursor);
@@ -37,7 +57,11 @@ export function makeClientSearch(db) {
       q = q.or(clauses.join(','));
     }
     const selectedProduct = String(product).trim().toLowerCase();
-    if (selectedProduct === 'deceased') q = q.eq('status', 'deceased');
+    if (selectedProduct === 't65' || selectedProduct === '65plus') {
+      const bounds = clientAgeBounds(selectedProduct, now());
+      if (bounds.min) q = q.gte('date_of_birth', bounds.min);
+      q = q.lte('date_of_birth', bounds.max);
+    } else if (selectedProduct === 'deceased') q = q.eq('status', 'deceased');
     else if (selectedProduct) q = q.contains('products', [selectedProduct]);
     if (agent) q = q.eq('assigned_agent_id', agent);
     if (birthYear) {
@@ -58,7 +82,7 @@ export function clientSearchMarkup(s) {
   return `<section class="panel-card dark-card client-search-panel" aria-label="Client search">
     <form id="client-search" class="search-form">
       <label class="field query-field"><span>Search Clients</span><input name="query" autocomplete="off" value="${esc(s.query)}" placeholder="Search clients…" enterkeyhint="search"></label>
-      <label class="field"><span>Product / Status</span><select name="product">${optionMarkup([['', 'All Products / Statuses'], ['medicare', 'Medicare'], ['life', 'Life'], ['retirement', 'Retirement'], ['deceased', 'Deceased']], String(s.product || '').toLowerCase())}</select></label>
+      <label class="field"><span>Product / Status</span><select name="product">${optionMarkup([['', 'All Products / Statuses'], ['medicare', 'Medicare'], ['life', 'Life'], ['retirement', 'Retirement'], ['t65', 'T65'], ['65plus', '65+'], ['deceased', 'Deceased']], String(s.product || '').toLowerCase())}</select></label>
       <input type="hidden" name="agent" value="${esc(s.agent || '')}">
       <div class="search-actions"><button type="submit" class="btn primary">Search</button><button type="button" class="btn secondary" data-reset-search>Clear</button></div>
     </form>
