@@ -2,6 +2,7 @@ import { CONTACT_OUTCOMES, memberOrders, safeSearchPattern } from './campaigns-m
 
 const check = ({ data, error }) => { if (error) throw error; return data; };
 const pageOffset = value => Number.isSafeInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0;
+const MEMBER_PAGE_SIZE = 500;
 export function createCampaignRepository(db) {
   return {
     async list({ status = 'active', cursor = null } = {}) {
@@ -17,7 +18,6 @@ export function createCampaignRepository(db) {
     async save({ id, name, topic = 'general', description = '', assigned_agent_id }, userId) {
       const payload = { name: String(name || '').trim(), topic, description: String(description || '').trim() };
       if (!payload.name || payload.name.length > 120) throw new Error('Enter a campaign name of 1–120 characters.');
-      // A client-generated ID makes retrying creation safe without touching an existing campaign.
       const existing = check(await db.from('campaigns').select('id').eq('id', id).maybeSingle());
       if (existing) return check(await db.from('campaigns').update(payload).eq('id', id).select('*').single());
       return check(await db.from('campaigns').insert({ ...payload, id, owner_id: userId, assigned_agent_id: assigned_agent_id || userId }).select('*').single());
@@ -33,8 +33,8 @@ export function createCampaignRepository(db) {
       if (pattern) q = q.or(['full_name', 'phone', 'county', 'state'].map(k => `${k}.ilike.${pattern}`).join(','));
       for (const [field, ascending] of memberOrders(sort, direction)) q = q.order(field, { ascending, nullsFirst: false });
       const offset = pageOffset(cursor);
-      const rows = check(await q.range(offset, offset + 40)) || [];
-      return { rows: rows.slice(0, 40), nextCursor: rows.length > 40 ? String(offset + 40) : null };
+      const rows = check(await q.range(offset, offset + MEMBER_PAGE_SIZE)) || [];
+      return { rows: rows.slice(0, MEMBER_PAGE_SIZE), nextCursor: rows.length > MEMBER_PAGE_SIZE ? String(offset + MEMBER_PAGE_SIZE) : null };
     },
     async existingClients(campaignId, clientIds) {
       if (!clientIds.length) return [];
