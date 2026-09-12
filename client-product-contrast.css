@@ -1,0 +1,8 @@
+/* Keep Product Type checkbox labels readable in Client Information without changing panel backgrounds. */
+.client-form .product-choices,
+.client-form .product-choices legend,
+.client-form .product-choices label,
+.client-form .product-choices span{
+  color:#111827!important;
+}
+.client-form .product-choices label{font-weight:700}
