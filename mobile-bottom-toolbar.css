@@ -1,0 +1,118 @@
+/* Phone-only bottom dock for the existing M&H toolbar. Desktop/tablet layout is unchanged. */
+@media (max-width: 700px) {
+  .main {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .top {
+    position: fixed !important;
+    top: auto !important;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    min-height: 66px;
+    height: auto;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom, 0px));
+    gap: 5px;
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    background: rgba(7,19,28,.985);
+    box-shadow: 0 -8px 24px rgba(0,0,0,.22);
+  }
+
+  .top .menu-toggle {
+    display: grid;
+    place-items: center;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 46px;
+    min-height: 46px;
+    margin: 0;
+  }
+
+  .top-brand {
+    flex: 0 0 38px;
+    width: 38px;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  .top-brand img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .top-brand strong {
+    display: none;
+  }
+
+  .quick-tools {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .quick-tools::-webkit-scrollbar { display: none; }
+
+  .quick-tool {
+    flex: 0 0 42px;
+    min-width: 42px;
+    min-height: 48px;
+  }
+
+  .quick-tool .tool-icon {
+    width: 31px;
+    height: 31px;
+    border-radius: 9px;
+  }
+
+  .quick-tool .tool-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .quick-tool strong {
+    font-size: .52rem;
+  }
+
+  /* Keep the slide-out navigation above the bottom dock on phones. */
+  .sidebar {
+    max-height: calc(100dvh - 66px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .workspace-dialog {
+    max-height: calc(100dvh - 12px);
+  }
+}
+
+@media (max-width: 390px) {
+  .top {
+    padding-left: 5px;
+    padding-right: 5px;
+    gap: 3px;
+  }
+
+  .top .menu-toggle,
+  .top-brand {
+    flex-basis: 34px;
+    width: 34px;
+  }
+
+  .top-brand img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .quick-tool {
+    flex-basis: 39px;
+    min-width: 39px;
+  }
+}
