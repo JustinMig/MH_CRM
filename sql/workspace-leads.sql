@@ -29,6 +29,7 @@ create unique index if not exists workspace_leads_source_record_uidx on public.w
 create index if not exists workspace_leads_owner_status_idx on public.workspace_leads(assigned_agent_id, status, created_at desc);
 create index if not exists workspace_leads_phone_idx on public.workspace_leads(phone) where phone is not null;
 create index if not exists workspace_leads_client_idx on public.workspace_leads(client_id) where client_id is not null;
+create index if not exists workspace_leads_created_by_idx on public.workspace_leads(created_by);
 drop trigger if exists workspace_leads_set_updated_at on public.workspace_leads;
 create trigger workspace_leads_set_updated_at before update on public.workspace_leads for each row execute function public.set_updated_at();
 alter table public.workspace_leads enable row level security;
@@ -38,7 +39,7 @@ grant select, insert, update, delete on public.workspace_leads to authenticated;
 drop policy if exists workspace_leads_select on public.workspace_leads;
 create policy workspace_leads_select on public.workspace_leads for select to authenticated using (private.is_active_crm_user());
 drop policy if exists workspace_leads_insert on public.workspace_leads;
-create policy workspace_leads_insert on public.workspace_leads for insert to authenticated with check (private.is_active_crm_user() and created_by = auth.uid());
+create policy workspace_leads_insert on public.workspace_leads for insert to authenticated with check (private.is_active_crm_user() and created_by = (select auth.uid()));
 drop policy if exists workspace_leads_update on public.workspace_leads;
 create policy workspace_leads_update on public.workspace_leads for update to authenticated using (private.is_active_crm_user()) with check (private.is_active_crm_user());
 drop policy if exists workspace_leads_delete on public.workspace_leads;
