@@ -82,7 +82,8 @@ async function refreshClientStats(existing = null) {
     if (token !== statsToken || !grid.isConnected) return;
     for (const key of ['total', 'medicare', 'life']) {
       const node = grid.querySelector(`[data-client-summary="${key}"]`);
-      if (node) node.textContent = Number(counts[key] || 0).toLocaleString('en-US');
+      const next = Number(counts[key] || 0).toLocaleString('en-US');
+      if (node && node.textContent !== next) node.textContent = next;
     }
     grid.removeAttribute('data-error');
   } catch (error) {
@@ -110,8 +111,10 @@ function decorateCommissionDialog(dialog) {
     const period = centralPremiumPeriod();
     const first = articles[0].querySelector('span');
     const second = articles[1].querySelector('span');
-    if (first) first.textContent = `Monthly Premium · ${period.monthName}`;
-    if (second) second.textContent = `Yearly Total · ${period.year}`;
+    const monthlyLabel = `Monthly Premium · ${period.monthName}`;
+    const yearlyLabel = `Yearly Total · ${period.year}`;
+    if (first && first.textContent !== monthlyLabel) first.textContent = monthlyLabel;
+    if (second && second.textContent !== yearlyLabel) second.textContent = yearlyLabel;
     if (!body.querySelector('.life-premium-production-note')) {
       const note = document.createElement('p');
       note.className = 'life-premium-production-note';
