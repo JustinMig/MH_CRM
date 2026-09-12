@@ -1,37 +1,63 @@
-function compactCampaignCards(root=document){
-  const cards=root.querySelectorAll('.campaigns-root .cmp-campaign-card');
-  cards.forEach(card=>{
-    if(card.dataset.cmpCompactCard==='true') return;
-    const name=card.querySelector(':scope > strong')?.textContent?.trim()||'Campaign';
-    const foot=card.querySelector('.cmp-card-foot')?.textContent||'';
-    const countMatch=foot.match(/(\d+)\s+clients?/i);
-    const total=countMatch?Number(countMatch[1]):0;
-    const titlebar=card.closest('.campaigns-root')?.querySelector('.cmp-titlebar');
-    const allButtons=[...card.parentElement?.querySelectorAll('.cmp-campaign-card')||[]];
-    let added='';
-    const raw=card.outerHTML.match(/data-cmp-open="([^"]+)"/);
-    const id=raw?.[1]||'';
-    // Date is already present in campaign list data, but the current card renderer omits it.
-    // Read the campaign object's created date from a lightweight dataset hook if later provided.
-    // Until then, preserve a neutral label populated from the visible card's DOM when available.
-    const dateSource=card.querySelector('[data-cmp-added]')?.textContent?.trim();
-    if(dateSource) added=dateSource;
+import { supabase } from './supabase-repository.js';
+
+const fmtDate = value => {
+  if (!value) return 'Date not available';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date not available';
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'America/Chicago',
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+let token = 0;
+let queued = false;
+
+async function compactCampaignCards() {
+  const grid = document.querySelector('.campaigns-root .cmp-campaign-grid');
+  if (!grid) return;
+  const cards = [...grid.querySelectorAll(':scope > .cmp-campaign-card')];
+  if (!cards.length) return;
+
+  const ids = cards.map(card => card.dataset.cmpOpen).filter(Boolean);
+  if (!ids.length) return;
+  const myToken = ++token;
+
+  const { data, error } = await supabase
+    .from('campaign_summaries')
+    .select('id,name,created_at,total_count')
+    .in('id', ids);
+  if (error || myToken !== token || !grid.isConnected) return;
+
+  const rows = new Map((data || []).map(row => [String(row.id), row]));
+  for (const card of cards) {
+    const row = rows.get(String(card.dataset.cmpOpen || ''));
+    if (!row) continue;
+    const total = Number(row.total_count || 0);
     card.classList.add('cmp-campaign-card-compact');
-    card.dataset.cmpCompactCard='true';
-    card.innerHTML=`<strong>${name}</strong><div class="cmp-compact-meta"><span class="cmp-compact-date">${added||'Date added'}</span><span class="cmp-compact-total">${total} client${total===1?'':'s'}</span></div>`;
-    if(id) card.dataset.cmpOpen=id;
+    card.dataset.cmpCompactCard = 'true';
+    card.innerHTML = `<strong>${String(row.name || 'Campaign').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}</strong><div class="cmp-compact-meta"><span>Added ${fmtDate(row.created_at)}</span><span>${total} total client${total === 1 ? '' : 's'}</span></div>`;
+  }
+}
+
+function schedule() {
+  if (queued) return;
+  queued = true;
+  queueMicrotask(() => {
+    queued = false;
+    void compactCampaignCards();
   });
 }
 
-let queued=false;
-function schedule(){
-  if(queued) return;
-  queued=true;
-  queueMicrotask(()=>{queued=false;compactCampaignCards();});
-}
-
-new MutationObserver(mutations=>{
-  if(mutations.some(m=>[...m.addedNodes].some(n=>n instanceof Element&&(n.matches?.('.cmp-campaign-card,.cmp-campaign-grid,.campaigns-root')||n.querySelector?.('.cmp-campaign-card'))))) schedule();
-}).observe(document.body,{childList:true,subtree:true});
+new MutationObserver(mutations => {
+  if (mutations.some(mutation => [...mutation.addedNodes].some(node =>
+    node instanceof Element && (
+      node.matches?.('.cmp-campaign-card,.cmp-campaign-grid,.campaigns-root') ||
+      node.querySelector?.('.cmp-campaign-card')
+    )
+  ))) schedule();
+}).observe(document.body, { childList: true, subtree: true });
 
 schedule();
