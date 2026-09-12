@@ -1,0 +1,3 @@
+.cmp-list-filter[hidden]{display:none!important}
+.cmp-campaign-shell{display:grid;gap:5px;min-width:0}.cmp-campaign-shell>.cmp-campaign-card{width:100%}.cmp-delete-campaign{justify-self:end;appearance:none;border:1px solid #dcc8ca;border-radius:7px;background:#fbf5f5;color:#8a555d;padding:4px 8px;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.cmp-delete-campaign:hover{background:#f6e9ea;border-color:#cfb2b6}.cmp-select-all{white-space:nowrap}
+@media(max-width:620px){.cmp-campaign-shell{gap:4px}.cmp-delete-campaign{font-size:9px;padding:4px 7px}.cmp-selectionbar .cmp-select-all{min-height:36px;padding:7px 9px}}
