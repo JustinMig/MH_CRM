@@ -1,3 +1,16 @@
 .cmp-list-filter[hidden]{display:none!important}
-.cmp-campaign-shell{display:grid;gap:5px;min-width:0}.cmp-campaign-shell>.cmp-campaign-card{width:100%}.cmp-delete-campaign{justify-self:end;appearance:none;border:1px solid #dcc8ca;border-radius:7px;background:#fbf5f5;color:#8a555d;padding:4px 8px;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.cmp-delete-campaign:hover{background:#f6e9ea;border-color:#cfb2b6}.cmp-select-all{white-space:nowrap}
-@media(max-width:620px){.cmp-campaign-shell{gap:4px}.cmp-delete-campaign{font-size:9px;padding:4px 7px}.cmp-selectionbar .cmp-select-all{min-height:36px;padding:7px 9px}}
+/* One visual campaign box, with separate Open and Delete buttons inside it.
+   Keep the controls as siblings: a button must not be nested in another button. */
+.cmp-campaign-shell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0;min-width:0;border:1px solid #ccd7df;border-radius:9px;background:#fbfcfd;box-shadow:0 1px 2px rgba(15,23,42,.025)}
+.cmp-campaign-shell:hover,.cmp-campaign-shell:focus-within{border-color:#bfcdd6}
+.cmp-campaign-shell>.cmp-campaign-card{width:100%;min-width:0;height:100%;margin:0;border:0!important;border-radius:8px 0 0 8px!important;background:transparent!important;box-shadow:none!important;overflow:hidden}
+.cmp-campaign-shell>.cmp-campaign-card:hover{background:#f3f7f9!important}
+.cmp-campaign-shell>.cmp-campaign-card>strong{max-width:100%}
+.cmp-campaign-shell .cmp-compact-meta{flex-wrap:wrap;gap:4px 8px!important}
+.cmp-campaign-shell .cmp-compact-meta>span{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.cmp-delete-campaign{align-self:center;justify-self:end;appearance:none;min-width:54px;min-height:36px;margin:8px 10px 8px 0;border:1px solid #dcc8ca;border-radius:7px;background:#fbf5f5;color:#8a555d;padding:7px 9px;font:inherit;font-size:11px;font-weight:800;line-height:1.2;cursor:pointer}
+.cmp-delete-campaign:hover{background:#f6e9ea;border-color:#cfb2b6}
+.cmp-campaign-shell>.cmp-campaign-card:focus-visible{outline:3px solid #82a4bd;outline-offset:-3px}
+.cmp-delete-campaign:focus-visible{outline:3px solid #82a4bd;outline-offset:2px}
+.cmp-select-all{white-space:nowrap}
+@media(max-width:620px){.cmp-delete-campaign{min-height:44px;margin:7px 8px 7px 0;padding:7px 8px}.cmp-selectionbar .cmp-select-all{min-height:36px;padding:7px 9px}}
