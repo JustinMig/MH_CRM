@@ -69,14 +69,13 @@ mhRepository.lifeProductionTracker = async function lifeProductionTracker({ agen
   const allRows = data || [];
   const rows = allRows.filter(row => Number(row.effective_year) === selectedYear);
   const summary = summarizePremiumProduction(rows, { year:selectedYear, month:selectedMonth, monthName:MONTHS[selectedMonth - 1] });
-  const yearlySales = rows.reduce((sum,row) => sum + Number(row.policy_count || 0), 0);
   const monthRows = Array.from({ length:12 }, (_,index) => {
     const m = index + 1;
     const matches = rows.filter(row => Number(row.effective_month) === m);
     return { month:m, monthName:MONTHS[index], sales:matches.reduce((s,row)=>s+Number(row.policy_count||0),0), premium:matches.reduce((s,row)=>s+Number(row.premium_total||0),0) };
   });
   const years = [...new Set([period.year, ...allRows.map(row => Number(row.effective_year)).filter(Number.isFinite)])].sort((a,b)=>b-a);
-  return { ...summary, monthlySales:summary.monthlyPolicyCount, yearlySales, years, months:monthRows };
+  return { ...summary, month:selectedMonth, monthlySales:summary.monthlyPolicies, yearlySales:summary.yearlyPolicies, years, months:monthRows };
 };
 
 mhRepository.medicareCommissionTracker = async function medicareCommissionTracker({ agent = '', contractYear } = {}) {
