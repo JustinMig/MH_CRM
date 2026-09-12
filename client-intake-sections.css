@@ -4,15 +4,14 @@
 .intake-section-title{margin-bottom:2px;padding-bottom:7px;border-bottom:1px solid #ddd8cf}
 .intake-section-title strong{font-size:14px;color:#33404a;letter-spacing:.01em}
 .intake-section-box .field{margin:0;min-width:0}
+.intake-section-box .field.span-all{grid-column:1/-1}
 .intake-section-address{grid-template-columns:repeat(2,minmax(0,1fr))}
-.intake-section-address .field:has([name="address"]){grid-column:1/-1}
 .intake-section-social .field{grid-column:1/-1}
 .intake-products-box{margin:0;padding:14px;border:1px solid #c7c2b8!important;border-radius:12px;background:#f7f5f1}
 .intake-products-box legend{padding:0 4px;font-size:14px;font-weight:800;color:#33404a}
 .intake-section-underwriting{margin:0}
 @media(min-width:900px){
   .intake-section-address{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .intake-section-address .field:has([name="address"]){grid-column:1/-1}
 }
 @media(max-width:560px){
   .intake-section-box{gap:10px;padding:12px}
@@ -22,5 +21,5 @@
 }
 @media(max-width:390px){
   .intake-section-box{grid-template-columns:1fr}
-  .intake-section-box .field,.intake-section-address .field:has([name="address"]),.intake-section-social .field{grid-column:1}
+  .intake-section-box .field,.intake-section-social .field{grid-column:1}
 }
