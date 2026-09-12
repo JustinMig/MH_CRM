@@ -1,5 +1,4 @@
 import { Dialogs } from './dialogs.js';
-import { snapshot, stable } from './core.js';
 
 const previousOpen = Dialogs.prototype.open;
 
@@ -9,23 +8,31 @@ Dialogs.prototype.open = function newClientCleanClose(options = {}) {
   if (!isNewClient) return controller;
 
   let form = null;
-  let cleanBaseline = '';
+  let userChanged = false;
   const previousAttachForm = controller.attachForm.bind(controller);
   const previousBaseline = controller.baseline.bind(controller);
+
+  const markUserChanged = event => {
+    // Enhancers dispatch synthetic input/change events while building the form.
+    // Only a real keyboard/touch/mouse edit should make a brand-new client dirty.
+    if (event.isTrusted) userChanged = true;
+  };
 
   controller.attachForm = nextForm => {
     previousAttachForm(nextForm);
     form = nextForm;
-    cleanBaseline = stable(snapshot(form));
+    userChanged = false;
+    form.addEventListener('input', markUserChanged, true);
+    form.addEventListener('change', markUserChanged, true);
     controller.node.dataset.newClientCleanBaseline = 'true';
   };
 
   controller.baseline = () => {
     previousBaseline();
-    if (form) cleanBaseline = stable(snapshot(form));
+    userChanged = false;
   };
 
-  controller.isDirty = () => Boolean(form) && cleanBaseline !== stable(snapshot(form));
+  controller.isDirty = () => Boolean(form) && userChanged;
 
   return controller;
 };
