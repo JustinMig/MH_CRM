@@ -8,11 +8,19 @@ const STATUS_LABELS = {
 };
 
 const VIEW_LABELS = {
-  stage1: 'Stage 1 — Not Contacted',
+  stage1: 'Clients To Contact',
   voicemail: 'Voicemail Left',
   no_answer: 'No Answer',
   follow_up: 'Follow Up / More Info Needed',
   completed: 'Completed'
+};
+
+const ICONS = {
+  stage1: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v4H7z"/><path d="M5 7h14v14H5z"/><path d="M8 11h8M8 15h5"/></svg>',
+  voicemail: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0Zm8 0a4 4 0 1 0 8 0 4 4 0 1 0-8 0Z"/><path d="M8 16h8"/></svg>',
+  no_answer: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h4l2 5-3 2a14 14 0 0 0 3 3l2-3 5 2v4c0 2-2 3-4 3C9 20 4 15 4 8c0-2 1-4 3-4Z"/><path d="m16 4 4 4m0-4-4 4"/></svg>',
+  follow_up: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H8l-4 4Z"/><path d="M8 9h8M8 13h5"/></svg>',
+  completed: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'
 };
 
 let activeView = 'stage1';
@@ -45,7 +53,8 @@ function counterButton(view, label, count) {
   button.type = 'button';
   button.className = 'cmp-counter-card';
   button.dataset.cmpCounterView = view;
-  button.innerHTML = `<strong>${count}</strong><span>${label}</span>`;
+  button.setAttribute('aria-label', `${label}: ${count}`);
+  button.innerHTML = `<span class="cmp-counter-icon">${ICONS[view] || ''}</span><strong>${count}</strong><span class="cmp-counter-label">${label}</span>`;
   return button;
 }
 
@@ -88,39 +97,29 @@ function renderView(root, members, cards) {
   members.replaceChildren();
   members.dataset.cmpStageLayout = 'true';
   members.dataset.cmpCurrentView = activeView;
+  if (oldStage) oldStage.hidden = true;
+  if (filters) filters.hidden = true;
 
   if (activeView === 'stage1') {
-    if (oldStage) {
-      oldStage.hidden = false;
-      oldStage.innerHTML = `<span>1</span><div><strong>Stage 1 — Contact</strong><small>${shown.length} client${shown.length === 1 ? '' : 's'} still need an initial update. Once updated, they leave Stage 1.</small></div>`;
-    }
-    if (filters) filters.hidden = true;
-
     const stage = document.createElement('section');
     stage.className = 'cmp-stage-list';
-    const head = document.createElement('header');
-    head.className = 'cmp-view-head';
-    head.innerHTML = `<div><span>Stage 1</span><strong>Clients To Contact</strong></div><b>${shown.length}</b>`;
     const rows = document.createElement('div');
     rows.className = 'cmp-outcome-rows';
     if (shown.length) shown.forEach(card => rows.append(card));
     else {
       const empty = document.createElement('div');
       empty.className = 'cmp-outcome-empty';
-      empty.textContent = 'No clients remain in Stage 1.';
+      empty.textContent = 'No clients remain to contact.';
       rows.append(empty);
     }
-    stage.append(head, rows);
+    stage.append(rows);
     members.append(stage);
   } else {
-    if (oldStage) oldStage.hidden = true;
-    if (filters) filters.hidden = true;
-
     const separate = document.createElement('section');
     separate.className = 'cmp-separate-view';
     const head = document.createElement('header');
     head.className = 'cmp-separate-head';
-    head.innerHTML = `<button type="button" class="cmp-view-back" data-cmp-view-back>‹ Stage 1</button><div><span>Campaign List</span><strong>${title}</strong><small>${shown.length} client${shown.length === 1 ? '' : 's'}</small></div>`;
+    head.innerHTML = `<button type="button" class="cmp-view-back" data-cmp-view-back>‹ Total Clients</button><div><span>Campaign List</span><strong>${title}</strong><small>${shown.length} client${shown.length === 1 ? '' : 's'}</small></div>`;
     const rows = document.createElement('div');
     rows.className = 'cmp-outcome-rows';
     if (shown.length) shown.forEach(card => rows.append(card));
