@@ -1,0 +1,136 @@
+name: Mayer MIG Read-Only Speed Audit
+on:
+  push:
+    branches: [audit/mayer-mig-20260915]
+    paths: [.github/workflows/mig-speed-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all existing tests and JavaScript syntax checks
+        shell: bash
+        run: |
+          mkdir -p audit-results
+          node --test tests/*.test.mjs > audit-results/regression.txt 2>&1 || true
+          tail -35 audit-results/regression.txt
+          find . -type f -name '*.js' -not -path './.git/*' -not -path './audit-results/*' -print0 | while IFS= read -r -d '' f; do
+            node --check "$f" 2>&1 || echo "SYNTAX_FAILURE: $f"
+          done > audit-results/syntax.txt
+          cat audit-results/syntax.txt
+          git rev-parse HEAD > audit-results/commit.txt
+          tar --exclude=.git --exclude=audit-results --exclude='.env*' -czf audit-results/public-source.tar.gz .
+      - name: Install pinned measurement tools (no project install scripts)
+        run: |
+          npm install --prefix /tmp/mig-audit-tools --ignore-scripts --no-audit --no-fund playwright@1.55.0 lighthouse@12.8.2
+          google-chrome --version
+      - name: Measure live login, errors, recovery and responsive layout
+        shell: bash
+        run: |
+          cat > /tmp/mig-audit-tools/browser-audit.cjs <<'JS'
+          const {chromium} = require('playwright');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const out = path.join(process.env.GITHUB_WORKSPACE, 'audit-results');
+          const results = {timestamp:new Date().toISOString(),scope:'Unauthenticated production browser tests. No credentials, customer records, messages or appointments are created or changed.', runs:[], http:[]};
+          const safeUrl = s => { try { const u=new URL(s); return u.origin+u.pathname; } catch { return 'unknown'; } };
+          (async()=>{
+            for(const host of ['mig.mayerig.com','mh.mayerig.com']) {
+              for(let i=0;i<3;i++) {
+                const start=performance.now();
+                try {
+                  const r=await fetch('https://'+host+'/',{signal:AbortSignal.timeout(20000)});
+                  const headersMs=performance.now()-start;
+                  const body=await r.text();
+                  results.http.push({host,run:i+1,status:r.status,finalUrl:safeUrl(r.url),responseHeadersMs:Math.round(headersMs),completeMs:Math.round(performance.now()-start),htmlBytes:Buffer.byteLength(body),title:body.match(/<title>(.*?)<\/title>/i)?.[1],headers:Object.fromEntries(['cache-control','content-encoding','strict-transport-security','content-security-policy','x-frame-options','x-content-type-options','referrer-policy','x-vercel-cache'].map(k=>[k,r.headers.get(k)]))});
+                } catch(e) { results.http.push({host,error:e.message}); }
+              }
+            }
+            const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+            for(const mode of ['desktop','mobile']) for(let n=1;n<=3;n++) {
+              const context=await browser.newContext({viewport:mode==='desktop'?{width:1440,height:1000}:{width:390,height:844},deviceScaleFactor:mode==='desktop'?1:2,isMobile:mode==='mobile',hasTouch:mode==='mobile'});
+              const page=await context.newPage();
+              const cdp=await context.newCDPSession(page);
+              await cdp.send('Network.enable'); await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
+              if(mode==='mobile') {
+                await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:150,downloadThroughput:200000,uploadThroughput:93750});
+                await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
+              }
+              const record={mode,run:n,coldCache:true,network:mode==='mobile'?'150 ms latency, 1.6 Mbps down, 0.75 Mbps up; 4x CPU slowdown':'GitHub runner network; no throttling',errors:[],failedRequests:[],httpErrors:[]};
+              page.on('pageerror',e=>record.errors.push(e.message));
+              page.on('requestfailed',r=>record.failedRequests.push({url:safeUrl(r.url()),error:r.failure()?.errorText}));
+              page.on('response',r=>{if(r.status()>=400)record.httpErrors.push({url:safeUrl(r.url()),status:r.status()});});
+              await page.addInitScript(()=>{
+                window.__perf={lcp:0,cls:0,longTasks:[]};
+                try {new PerformanceObserver(l=>{for(const e of l.getEntries())window.__perf.lcp=e.startTime;}).observe({type:'largest-contentful-paint',buffered:true});}catch{}
+                try {new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__perf.cls+=e.value;}).observe({type:'layout-shift',buffered:true});}catch{}
+                try {new PerformanceObserver(l=>{for(const e of l.getEntries())window.__perf.longTasks.push(e.duration);}).observe({type:'longtask',buffered:true});}catch{}
+              });
+              const started=performance.now();
+              try {
+                await page.goto('https://mig.mayerig.com/',{waitUntil:'domcontentloaded',timeout:45000});
+                await page.waitForSelector('#signin-form',{timeout:30000});
+                record.loginVisibleMs=Math.round(performance.now()-started);
+                await page.waitForTimeout(3000);
+                record.metrics=await page.evaluate(()=>{
+                  const nav=performance.getEntriesByType('navigation')[0]; const resources=performance.getEntriesByType('resource');
+                  return {ttfbMs:nav.responseStart-nav.requestStart,domContentLoadedMs:nav.domContentLoadedEventEnd,loadMs:nav.loadEventEnd,fcpMs:performance.getEntriesByName('first-contentful-paint')[0]?.startTime||null,...window.__perf,resourceCount:resources.length,transferredBytes:resources.reduce((s,r)=>s+r.transferSize,0),decodedBytes:resources.reduce((s,r)=>s+r.decodedBodySize,0),resources:resources.map(r=>({url:new URL(r.name).origin+new URL(r.name).pathname,type:r.initiatorType,durationMs:r.duration,transferSize:r.transferSize,decodedBytes:r.decodedBodySize})),horizontalOverflow:document.documentElement.scrollWidth>innerWidth,heading:document.querySelector('h1')?.textContent};
+                });
+                if(n===1) {
+                  await page.screenshot({path:path.join(out,mode+'-login.png'),fullPage:true});
+                  await page.getByRole('button',{name:'Forgot password?'}).click();
+                  record.forgotPasswordForm=await page.locator('#reset-request-form').count()===1;
+                  await page.getByRole('button',{name:'Back to Sign In'}).click();
+                  record.returnToLogin=await page.locator('#signin-form').count()===1;
+                }
+              } catch(e) {record.failure=e.message;await page.screenshot({path:path.join(out,mode+'-'+n+'-failure.png'),fullPage:true}).catch(()=>{});}
+              results.runs.push(record); console.log('BROWSER',JSON.stringify({...record,metrics:record.metrics?{...record.metrics,resources:undefined}:undefined}));
+              await context.close();
+            }
+            const context=await browser.newContext(); const page=await context.newPage();
+            results.recovery=[];
+            for(const suffix of ['/?recovery=1','/?recovery=1#error=access_denied&error_code=otp_expired&error_description=Link+expired']) {
+              await page.goto('https://mig.mayerig.com'+suffix,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForTimeout(5000);
+              results.recovery.push({case:suffix.includes('error=')?'Expired recovery link':'Recovery route without session',visibleText:(await page.locator('body').innerText()).slice(0,1500),passwordForm:await page.locator('#new-password-form').count(),loginForm:await page.locator('#signin-form').count()});
+            }
+            await context.close(); await browser.close();
+            results.endpointAuth=[];
+            for(const route of ['/api/calendar-events','/api/ringcentral-recording','/api/ringcentral-sync']) {
+              const r=await fetch('https://mig.mayerig.com'+route,{signal:AbortSignal.timeout(20000)});
+              results.endpointAuth.push({route,status:r.status});
+            }
+            fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify(results,null,2));
+            console.log('HTTP',JSON.stringify(results.http));console.log('RECOVERY',JSON.stringify(results.recovery));console.log('AUTH',JSON.stringify(results.endpointAuth));
+          })().catch(e=>{console.error(e);fs.writeFileSync(path.join(out,'browser-results.json'),JSON.stringify(results,null,2));process.exitCode=1;});
+          JS
+          node /tmp/mig-audit-tools/browser-audit.cjs
+      - name: Lighthouse mobile and desktop (public login only)
+        if: always()
+        shell: bash
+        run: |
+          export CHROME_PATH=/usr/bin/google-chrome
+          /tmp/mig-audit-tools/node_modules/.bin/lighthouse https://mig.mayerig.com/ --chrome-flags='--headless --no-sandbox' --only-categories=performance,accessibility,best-practices --output=json --output=html --output-path=./audit-results/lighthouse-mobile --quiet || true
+          /tmp/mig-audit-tools/node_modules/.bin/lighthouse https://mig.mayerig.com/ --chrome-flags='--headless --no-sandbox' --preset=desktop --only-categories=performance,accessibility,best-practices --output=json --output=html --output-path=./audit-results/lighthouse-desktop --quiet || true
+          node - <<'JS'
+          const fs=require('node:fs');
+          for(const file of fs.readdirSync('audit-results').filter(x=>x.startsWith('lighthouse')&&x.endsWith('.json'))) {
+            const r=JSON.parse(fs.readFileSync('audit-results/'+file));
+            console.log('LIGHTHOUSE',JSON.stringify({file,version:r.lighthouseVersion,url:r.finalDisplayedUrl,categories:Object.fromEntries(Object.entries(r.categories||{}).map(([k,v])=>[k,v.score])),metrics:Object.fromEntries(['first-contentful-paint','largest-contentful-paint','total-blocking-time','cumulative-layout-shift','speed-index','network-requests','total-byte-weight'].map(k=>[k,{value:r.audits?.[k]?.numericValue,display:r.audits?.[k]?.displayValue}])),issues:Object.entries(r.audits||{}).filter(([k,v])=>v.score!==null&&v.score<1).map(([k,v])=>({id:k,title:v.title,score:v.score,display:v.displayValue})),runtimeError:r.runtimeError}));
+          }
+          JS
+      - name: Preserve audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mayer-mig-speed-audit
+          path: audit-results/
+          retention-days: 3
