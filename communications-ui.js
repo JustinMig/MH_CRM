@@ -34,9 +34,13 @@ async function conversationRows() {
   const byId = new Map(clients.map(client => [client.id, client]));
   const groups = new Map();
   for (const message of messages || []) {
+    const client = byId.get(message.client_id);
+    // Communications is intentionally client-only: never show an unknown,
+    // deleted, unmatched, or otherwise unsaved M&H phone conversation.
+    if (!client) continue;
     let group = groups.get(message.client_id);
     if (!group) {
-      group = { client: byId.get(message.client_id) || { id:message.client_id, first_name:'Client', last_name:'', phone:'' }, latest:message, unread:0, count:0 };
+      group = { client, latest:message, unread:0, count:0 };
       groups.set(message.client_id, group);
     }
     group.count += 1;
@@ -46,7 +50,7 @@ async function conversationRows() {
 }
 
 function conversationMarkup(groups) {
-  if (!groups.length) return '<div class="sms-center-empty"><h3>No text conversations yet</h3><p>Send a text from a client file or start a mass text. Replies will appear here.</p></div>';
+  if (!groups.length) return '<div class="sms-center-empty"><h3>No saved-client text conversations yet</h3><p>Only texts tied to clients saved in M&H CRM appear here.</p></div>';
   return groups.map(group => {
     const client = group.client;
     const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client';
@@ -65,7 +69,7 @@ async function loadCenter(host, { sync = false } = {}) {
   const status = host.querySelector('[data-sms-center-status]');
   try {
     if (sync) {
-      status.textContent = 'Syncing Twilio replies…';
+      status.textContent = 'Syncing saved-client Twilio replies…';
       await syncRecent();
     }
     const groups = await conversationRows();
@@ -78,7 +82,7 @@ async function loadCenter(host, { sync = false } = {}) {
       await openClientThread(button.dataset.smsConversation);
       if (host.isConnected) void loadCenter(host);
     });
-    status.textContent = `Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
+    status.textContent = `Showing saved M&H clients only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
     await updateGlobalUnread();
   } catch (error) {
     if (host.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load text messages.';
@@ -189,9 +193,9 @@ function mountCommunications() {
   }
   if (!host.dataset.mounted) {
     host.dataset.mounted = 'true';
-    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
-      <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
-      <div class="sms-center-status" data-sms-center-status>Loading text conversations…</div>
+    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Only clients saved in M&H CRM are shown</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
+      <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Saved Client Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
+      <div class="sms-center-status" data-sms-center-status>Loading saved-client text conversations…</div>
       <div class="sms-conversations" data-sms-conversations></div>`;
     host.querySelector('[data-sms-sync]').onclick = () => void loadCenter(host, { sync:true });
     host.querySelector('[data-sms-mass]').onclick = massTextDialog;
