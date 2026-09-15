@@ -12,13 +12,9 @@ import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar
 const root = document.querySelector('#app');
 installPullToRefresh();
 
-// Shared, paginated client search with location, status and creation-date sorting.
 mhRepository.searchClients = makeClientSearch(supabase);
 mhRepository.campaigns = createCampaignRepository(supabase);
 
-// Justin is the only current M&H user. The Agent filter is hidden, but the
-// search state still needs his ID so pressing Search with empty fields loads
-// his first 50 clients instead of treating the form as an empty search.
 function applyCurrentUserToClientSearch(form = root.querySelector('#client-search')) {
   if (!form || !mhRepository.user?.id) return;
   const agent = form.elements.namedItem('agent');
@@ -37,7 +33,7 @@ root.addEventListener('click', event => {
 new MutationObserver(() => applyCurrentUserToClientSearch()).observe(root, { childList: true, subtree: true });
 
 function authScreen(message = '') {
-  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="/assets/mh-logo.jpg" alt="M&H shield"><h1>M&amp;H CRM</h1><p>Sign in to M&amp;H Insurance Group.</p>${message ? `<div class="auth-message">${message}</div>` : ''}<form id="signin-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><label>Password <input name="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="auth-actions"><button class="btn primary" type="submit">Sign In</button></div></form><small>Accounts are added by an M&amp;H CRM Owner or Admin. Public account creation is disabled.</small></section></main>`;
+  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="https://crm.mayerig.com/mayer-bear.png?v=mig-1" alt="Mayer MIG bear"><h1>Mayer MIG CRM</h1><p>Sign in to Mayer MIG CRM.</p>${message ? `<div class="auth-message">${message}</div>` : ''}<form id="signin-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><label>Password <input name="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="auth-actions"><button class="btn primary" type="submit">Sign In</button></div></form><small>Accounts are added by a Mayer MIG CRM Owner or Admin. Public account creation is disabled.</small></section></main>`;
   const form = root.querySelector('#signin-form');
   form.onsubmit = async e => {
     e.preventDefault();
@@ -55,28 +51,19 @@ function authScreen(message = '') {
 }
 
 async function start() {
-  root.innerHTML = '<div class="auth-loading">Connecting securely to the M&amp;H database…</div>';
+  root.innerHTML = '<div class="auth-loading">Connecting securely to the Mayer MIG database…</div>';
   try {
     const signedIn = await mhRepository.initialize();
     if (!signedIn) { authScreen(); return; }
     if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
-    // M&H and Sheena's Mayer view now use the same underlying Justin calendar.
-    // Install the bridge before the workspace renders so the first calendar load
-    // already contains the shared Mayer events instead of the unused local table.
     installMayerJustinCalendar();
     createWorkspace(root, mhRepository);
     installDashboardCleanup(root);
     installAppointmentSingleAgent(root, mhRepository);
     installAdminUsers(root, mhRepository);
-    // Install the carrier screen only after the authenticated Supabase session
-    // and profile are fully restored. This makes saved carriers load correctly
-    // after a browser refresh instead of racing the login/session startup.
     installCarrierVault(root);
     applyCurrentUserToClientSearch();
 
-    // Communications depends on the authenticated workspace DOM. Loading it
-    // here prevents a hard refresh on #/communications from mounting too early
-    // and leaving the old placeholder screen visible instead of the text center.
     void import('./communications-ui.js?v=communications-perf-2')
       .then(() => import('./ringcentral-readonly.js?v=readonly-calls-2'))
       .then(() => import('./ringcentral-ui-adjustments.js?v=footer-call-data-1'))
