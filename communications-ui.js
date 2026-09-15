@@ -1,7 +1,9 @@
 import { mhRepository, supabase } from './supabase-repository.js';
-import { openClientThread, smsAuthHeaders, updateGlobalUnread } from './client-texting.js';
+import { openClientThread, smsAuthHeaders } from './client-texting.js';
 
 const MH_TEXT_START = '2026-09-15T07:50:00.000Z';
+const AUTO_SYNC_MS = 120000;
+const SYNC_COOLDOWN_MS = 60000;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const when = value => {
   const d = new Date(value || '');
@@ -9,6 +11,23 @@ const when = value => {
 };
 let refreshTimer = null;
 let loading = false;
+let syncing = false;
+let lastSyncAt = 0;
+
+function updateUnreadBadge(unread) {
+  const link = document.querySelector('.nav a[href="#/communications"]');
+  if (!link) return;
+  let badge = link.querySelector('.sms-nav-badge');
+  if (!badge && unread) {
+    badge = document.createElement('span');
+    badge.className = 'sms-nav-badge';
+    link.append(badge);
+  }
+  if (badge) {
+    badge.textContent = unread > 99 ? '99+' : String(unread);
+    badge.hidden = !unread;
+  }
+}
 
 async function syncRecent() {
   const headers = await smsAuthHeaders();
@@ -65,15 +84,11 @@ function conversationMarkup(groups) {
   }).join('');
 }
 
-async function loadCenter(host, { sync = false } = {}) {
+async function loadCenter(host) {
   if (!host?.isConnected || loading) return;
   loading = true;
   const status = host.querySelector('[data-sms-center-status]');
   try {
-    if (sync) {
-      status.textContent = 'Syncing new saved-client replies…';
-      await syncRecent();
-    }
     const groups = await conversationRows();
     if (!host.isConnected) return;
     const unread = groups.reduce((sum, group) => sum + group.unread, 0);
@@ -84,12 +99,30 @@ async function loadCenter(host, { sync = false } = {}) {
       await openClientThread(button.dataset.smsConversation);
       if (host.isConnected) void loadCenter(host);
     });
+    updateUnreadBadge(unread);
     status.textContent = `Saved M&H clients · M&H texting activity only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
-    await updateGlobalUnread();
   } catch (error) {
     if (host.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load text messages.';
   } finally {
     loading = false;
+  }
+}
+
+async function syncAndRefresh(host, { force = false } = {}) {
+  if (!host?.isConnected || syncing) return;
+  const now = Date.now();
+  if (!force && lastSyncAt && now - lastSyncAt < SYNC_COOLDOWN_MS) return;
+  syncing = true;
+  const status = host.querySelector('[data-sms-center-status]');
+  try {
+    if (status) status.textContent = 'Checking Twilio for new saved-client replies…';
+    await syncRecent();
+    lastSyncAt = Date.now();
+    if (host.isConnected) await loadCenter(host);
+  } catch (error) {
+    if (host.isConnected && status) status.textContent = error instanceof Error ? error.message : 'Unable to sync new text messages.';
+  } finally {
+    syncing = false;
   }
 }
 
@@ -180,7 +213,9 @@ function massTextDialog() {
 
 function mountCommunications() {
   if (!location.hash.startsWith('#/communications')) {
-    window.clearInterval(refreshTimer); refreshTimer = null; return;
+    window.clearInterval(refreshTimer);
+    refreshTimer = null;
+    return;
   }
   const content = document.querySelector('.content');
   if (!content) return;
@@ -193,20 +228,33 @@ function mountCommunications() {
     host.className = 'sms-center';
     old.replaceWith(host);
   }
-  if (!host.dataset.mounted) {
+  const firstMount = !host.dataset.mounted;
+  if (firstMount) {
     host.dataset.mounted = 'true';
     host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Saved M&H clients · M&H texting activity only</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
       <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Client Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
-      <div class="sms-center-status" data-sms-center-status>Loading M&H text conversations…</div>
+      <div class="sms-center-status" data-sms-center-status>Loading saved M&H conversations…</div>
       <div class="sms-conversations" data-sms-conversations></div>`;
-    host.querySelector('[data-sms-sync]').onclick = () => void loadCenter(host, { sync:true });
+    host.querySelector('[data-sms-sync]').onclick = () => void syncAndRefresh(host, { force:true });
     host.querySelector('[data-sms-mass]').onclick = massTextDialog;
   }
-  void loadCenter(host, { sync:true });
-  window.clearInterval(refreshTimer);
-  refreshTimer = window.setInterval(() => { if (location.hash.startsWith('#/communications') && document.visibilityState === 'visible') void loadCenter(host, { sync:true }); }, 45000);
+
+  // Render the Supabase copy first so opening Communications never waits on
+  // Twilio network/history work. Then check Twilio in the background.
+  void loadCenter(host).then(() => {
+    if (!host.isConnected || !location.hash.startsWith('#/communications')) return;
+    window.setTimeout(() => void syncAndRefresh(host), firstMount ? 250 : 0);
+  });
+
+  if (!refreshTimer) {
+    refreshTimer = window.setInterval(() => {
+      if (location.hash.startsWith('#/communications') && document.visibilityState === 'visible') void syncAndRefresh(host);
+    }, AUTO_SYNC_MS);
+  }
 }
 
 window.addEventListener('hashchange', () => window.setTimeout(mountCommunications, 0));
-window.addEventListener('focus', () => { if (location.hash.startsWith('#/communications')) window.setTimeout(mountCommunications, 0); });
+window.addEventListener('focus', () => {
+  if (location.hash.startsWith('#/communications')) window.setTimeout(mountCommunications, 0);
+});
 window.setTimeout(mountCommunications, 0);
