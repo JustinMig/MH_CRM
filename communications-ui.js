@@ -1,6 +1,7 @@
 import { mhRepository, supabase } from './supabase-repository.js';
 import { openClientThread, smsAuthHeaders, updateGlobalUnread } from './client-texting.js';
 
+const MH_TEXT_START = '2026-09-15T07:50:00.000Z';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const when = value => {
   const d = new Date(value || '');
@@ -21,6 +22,7 @@ async function conversationRows() {
   const { data: messages, error } = await supabase
     .from('client_sms_messages')
     .select('id,client_id,direction,body,status,read_at,occurred_at,created_at')
+    .gte('occurred_at', MH_TEXT_START)
     .order('occurred_at', { ascending:false })
     .limit(1000);
   if (error) throw error;
@@ -36,7 +38,7 @@ async function conversationRows() {
   for (const message of messages || []) {
     const client = byId.get(message.client_id);
     // Communications is intentionally client-only: never show an unknown,
-    // deleted, unmatched, or otherwise unsaved M&H phone conversation.
+    // deleted, unmatched, otherwise unsaved M&H client, or pre-M&H history.
     if (!client) continue;
     let group = groups.get(message.client_id);
     if (!group) {
@@ -50,7 +52,7 @@ async function conversationRows() {
 }
 
 function conversationMarkup(groups) {
-  if (!groups.length) return '<div class="sms-center-empty"><h3>No saved-client text conversations yet</h3><p>Only texts tied to clients saved in M&H CRM appear here.</p></div>';
+  if (!groups.length) return '<div class="sms-center-empty"><h3>No M&H text conversations yet</h3><p>Only texts from saved M&H clients received or sent after M&H texting was connected appear here.</p></div>';
   return groups.map(group => {
     const client = group.client;
     const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client';
@@ -69,7 +71,7 @@ async function loadCenter(host, { sync = false } = {}) {
   const status = host.querySelector('[data-sms-center-status]');
   try {
     if (sync) {
-      status.textContent = 'Syncing saved-client Twilio replies…';
+      status.textContent = 'Syncing new saved-client replies…';
       await syncRecent();
     }
     const groups = await conversationRows();
@@ -82,7 +84,7 @@ async function loadCenter(host, { sync = false } = {}) {
       await openClientThread(button.dataset.smsConversation);
       if (host.isConnected) void loadCenter(host);
     });
-    status.textContent = `Showing saved M&H clients only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
+    status.textContent = `Saved M&H clients · M&H texting activity only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
     await updateGlobalUnread();
   } catch (error) {
     if (host.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load text messages.';
@@ -193,9 +195,9 @@ function mountCommunications() {
   }
   if (!host.dataset.mounted) {
     host.dataset.mounted = 'true';
-    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Only clients saved in M&H CRM are shown</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
-      <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Saved Client Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
-      <div class="sms-center-status" data-sms-center-status>Loading saved-client text conversations…</div>
+    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Saved M&H clients · M&H texting activity only</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
+      <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Client Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
+      <div class="sms-center-status" data-sms-center-status>Loading M&H text conversations…</div>
       <div class="sms-conversations" data-sms-conversations></div>`;
     host.querySelector('[data-sms-sync]').onclick = () => void loadCenter(host, { sync:true });
     host.querySelector('[data-sms-mass]').onclick = massTextDialog;
