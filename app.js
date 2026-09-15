@@ -68,6 +68,13 @@ async function start() {
     // after a browser refresh instead of racing the login/session startup.
     installCarrierVault(root);
     applyCurrentUserToClientSearch();
+
+    // Communications depends on the authenticated workspace DOM. Loading it
+    // here prevents a hard refresh on #/communications from mounting too early
+    // and leaving the old placeholder screen visible instead of the text center.
+    void import('./communications-ui.js?v=refresh-route-1').catch(error => {
+      console.error('Communications UI failed to load.', error);
+    });
   } catch (error) {
     authScreen(`<b>Database connection error:</b> ${error.message || 'Please retry.'}`);
   }
