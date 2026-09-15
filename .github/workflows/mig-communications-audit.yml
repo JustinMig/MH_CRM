@@ -1,0 +1,87 @@
+name: Mayer MIG Isolated Communications Audit
+on:
+  push:
+    branches: [audit/mayer-mig-20260915]
+    paths: [.github/workflows/mig-communications-audit.yml]
+permissions:
+  contents: read
+jobs:
+  synthetic-browser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser harness
+        run: npm install --prefix /tmp/mig-lab --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - name: Test unchanged application code against synthetic fixtures
+        shell: bash
+        run: |
+          mkdir -p lab-results
+          cat > /tmp/mig-lab/stub.js <<'JS'
+          const agentId='00000000-0000-4000-8000-000000000001';
+          const alice={id:'00000000-0000-4000-8000-000000000011',first_name:'Test',last_name:'Alpha',phone:'6625550101',assigned_agent_id:agentId,status:'active'};
+          const bob={id:'00000000-0000-4000-8000-000000000012',first_name:'Test',last_name:'Beta',phone:'6625550102',assigned_agent_id:agentId,status:'active'};
+          window.__queries=[]; window.__fixture={clients:[alice,bob],profiles:[{id:agentId,full_name:'Synthetic Agent',role:'owner',active:true}],client_sms_messages:[{id:'sms-a',client_id:alice.id,direction:'inbound',body:'SYNTHETIC MESSAGE ALPHA',status:'received',read_at:null,occurred_at:'2026-09-15T08:30:00Z',created_at:'2026-09-15T08:30:00Z'}],ringcentral_calls:[{id:'call-a',client_id:alice.id,source_call_id:'synthetic-a',direction:'Inbound',result:'Answered',started_at:'2026-09-15T10:30:00Z',duration_seconds:120,recording_id:null},{id:'call-b',client_id:bob.id,source_call_id:'synthetic-b',direction:'Outbound',result:'Answered',started_at:'2026-09-15T09:30:00Z',duration_seconds:180,recording_id:null}]};
+          function query(table){const filters=[],orders=[];let lim=Infinity,single=false,head=false,patch=null;const info={table,columns:'',at:performance.now()};
+          const q={select(v,o={}){info.columns=v;head=o.head;return q},eq(k,v){filters.push(r=>r[k]===v);return q},is(k,v){filters.push(r=>(r[k]??null)===v);return q},in(k,v){filters.push(r=>v.includes(r[k]));return q},gte(k,v){filters.push(r=>r[k]>=v);return q},lte(k,v){filters.push(r=>r[k]<=v);return q},order(k,o={}){orders.push([k,o.ascending!==false]);return q},limit(v){lim=v;return q},maybeSingle(){single=true;return q},single(){single=true;return q},update(v){patch=v;info.update=Object.keys(v);return q},or(){return q},range(){return q},contains(){return q},not(){return q},ilike(){return q},neq(){return q},then(ok,fail){window.__queries.push(info);let rows=(window.__fixture[table]||[]).filter(r=>!r.hidden_at).filter(r=>filters.every(f=>f(r)));if(patch)for(const r of rows)Object.assign(r,patch);rows=rows.map(r=>({...r}));for(const [k,asc]of orders.slice().reverse())rows.sort((a,b)=>String(a[k]).localeCompare(String(b[k]))*(asc?1:-1));rows=rows.slice(0,lim);return new Promise(res=>setTimeout(()=>res({data:head?null:single?(rows[0]||null):rows,error:null,count:rows.length}),25)).then(ok,fail)}};return q;}
+          export const supabase={from:query,auth:{getSession:async()=>({data:{session:{access_token:'SYNTHETIC_NOT_VALID',user:{id:agentId}}},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async()=>({data:[],error:null}),functions:{invoke:async()=>({data:null,error:null})}};
+          export const mhRepository={connected:true,user:{id:agentId},profile:{role:'owner',active:true},agents:window.__fixture.profiles,initialize:async()=>true,getClient:async id=>window.__fixture.clients.find(c=>c.id===id),saveClient:async()=>{throw new Error('Production writes prohibited in lab')},listEvents:async()=>[],searchClients:async()=>({rows:window.__fixture.clients,nextCursor:null})};
+          JS
+          cat > /tmp/mig-lab/test.cjs <<'JS'
+          const {chromium}=require('playwright');const fs=require('node:fs');const path=require('node:path');
+          const root=process.env.GITHUB_WORKSPACE;const out=path.join(root,'lab-results');const stub=fs.readFileSync('/tmp/mig-lab/stub.js','utf8');
+          const results={scope:'Isolated Chromium tests of unchanged CRM code with synthetic data. No production authentication or customer writes.'};
+          (async()=>{
+            const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
+            async function newPage(){
+              const page=await browser.newPage({viewport:{width:1440,height:1000}});
+              // All requests are either fixtures or local source files. Nothing reaches production.
+              await page.route('**/*',async route=>{
+                const u=new URL(route.request().url());
+                if(u.hostname!=='127.0.0.1')return route.abort();
+                if(u.pathname==='/supabase-repository.js')return route.fulfill({status:200,contentType:'application/javascript',body:stub});
+                if(u.pathname==='/harness.html')return route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/client-texting.css"><link rel="stylesheet" href="/communications-ui.css"></head><body><div id="app"></div></body></html>'});
+                if(u.pathname.startsWith('/api/'))return route.fulfill({status:200,contentType:'application/json',body:'{"skipped":true,"matched":0,"events":[]}'});
+                const file=path.resolve(root,'.'+u.pathname);
+                if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:'Not found'});
+                const ext=path.extname(file);return route.fulfill({status:200,contentType:ext==='.js'?'application/javascript':ext==='.css'?'text/css':'application/octet-stream',body:fs.readFileSync(file)});
+              });
+              await page.goto('http://127.0.0.1/harness.html#/communications');return page;
+            }
+            let page=await newPage();
+            await page.route('**/api/twilio-sync*',async r=>{await new Promise(res=>setTimeout(res,2000));await r.fulfill({status:200,contentType:'application/json',body:'{"synced":0}'});});
+            await page.evaluate(async()=>{await import('/client-texting.js');window.__started=performance.now();window.MHTexting.openClientThread('00000000-0000-4000-8000-000000000011');});
+            await page.waitForTimeout(300);
+            results.threadDuringDelayedSync={visibleMessagesAt300ms:await page.locator('.sms-bubble').count(),visibleText:await page.locator('[data-sms-thread]').innerText()};
+            await page.waitForSelector('.sms-bubble');results.threadAfterDelayedSync={visibleMessageMs:await page.evaluate(()=>performance.now()-window.__started),mockDatabaseDelayMs:25,mockTwilioDelayMs:2000};await page.close();
+            page=await newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.evaluate(async()=>{const {mhRepository}=await import('/supabase-repository.js');const {createWorkspace}=await import('/workspace.js');createWorkspace(document.querySelector('#app'),mhRepository);await import('/communications-ui.js');await import('/ringcentral-readonly.js');await import('/ringcentral-ui-adjustments.js');await import('/communications-layout-fix.js');await import('/communications-delete.js');await import('/communications-open-client.js');});
+            await page.waitForSelector('[data-sms-conversation]');await page.locator('[data-channel="calls"]').click();await page.waitForSelector('.mh-call-row .mh-comm-delete');await page.waitForTimeout(500);
+            const extract=()=>[...document.querySelectorAll('[data-call-list]>.mh-call-row')].map(r=>({display:r.querySelector('.mh-call-client')?.textContent,deleteId:r.dataset.deleteCallId,openClientId:r.querySelector('[data-open-client]')?.dataset.openClient}));
+            results.initialCallActions=await page.evaluate(extract);
+            const before=await page.evaluate(()=>window.__queries.length);
+            for(let i=0;i<4;i++){await page.evaluate(()=>{let el=document.querySelector('#unrelated-update');if(!el){el=document.createElement('span');el.id='unrelated-update';document.body.append(el);}el.textContent=String(Date.now());});await page.waitForTimeout(200);}
+            results.queriesFrom4UnrelatedDOMChanges=await page.evaluate(before=>window.__queries.slice(before).map(q=>({table:q.table,columns:q.columns})),before);
+            await page.evaluate(()=>{window.__fixture.ringcentral_calls.unshift({id:'call-new',client_id:'00000000-0000-4000-8000-000000000013',direction:'Inbound',started_at:'2026-09-15T11:30:00Z'});document.querySelector('#unrelated-update').textContent='Backend now has a newer call; displayed list has not refreshed';});
+            await page.waitForTimeout(500);results.actionsAfterBackendChangesBeforeScreenRefresh=await page.evaluate(extract);results.errors=errors;results.layout=[];
+            await page.locator('[data-channel="texts"]').click();
+            for(const width of [1440,1024,768,390]){
+              await page.setViewportSize({width,height:900});await page.waitForTimeout(150);
+              results.layout.push(await page.evaluate(()=>{const boxes=[...document.querySelectorAll('.sms-center-metrics>div')].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,overflow:e.scrollWidth>e.clientWidth+1}});return{width:innerWidth,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,boxes,overlap:boxes.some((a,i)=>boxes.slice(i+1).some(b=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h))}}));
+              await page.screenshot({path:path.join(out,`communications-${width}.png`),fullPage:true});
+            }
+            await page.close();await browser.close();fs.writeFileSync(path.join(out,'synthetic-communications.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
+          })().catch(e=>{console.error(e);fs.writeFileSync(path.join(out,'synthetic-communications.json'),JSON.stringify({...results,failure:e.message},null,2));process.exitCode=1;});
+          JS
+          node /tmp/mig-lab/test.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mayer-mig-communications-lab
+          path: lab-results/
+          retention-days: 3
