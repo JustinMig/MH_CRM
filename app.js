@@ -72,7 +72,7 @@ async function start() {
     // Communications depends on the authenticated workspace DOM. Loading it
     // here prevents a hard refresh on #/communications from mounting too early
     // and leaving the old placeholder screen visible instead of the text center.
-    void import('./communications-ui.js?v=refresh-route-1').catch(error => {
+    void import('./communications-ui.js?v=communications-perf-1').catch(error => {
       console.error('Communications UI failed to load.', error);
     });
   } catch (error) {
