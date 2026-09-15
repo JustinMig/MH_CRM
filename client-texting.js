@@ -88,6 +88,7 @@ export async function openClientThread(clientId) {
   let client = null;
   let busy = false;
   let closed = false;
+  let timer = null;
 
   const showError = message => {
     errorBox.textContent = message || '';
@@ -150,10 +151,10 @@ export async function openClientThread(clientId) {
   dialog.querySelector('[data-sms-refresh]').onclick = () => { showError(''); void load(); };
   dialog.querySelector('[data-sms-close]').onclick = () => dialog.close();
   dialog.addEventListener('cancel', event => { event.preventDefault(); dialog.close(); });
-  dialog.addEventListener('close', () => { closed = true; window.clearInterval(timer); dialog.remove(); updateGlobalUnread().catch(() => {}); });
+  dialog.addEventListener('close', () => { closed = true; if (timer) window.clearInterval(timer); dialog.remove(); updateGlobalUnread().catch(() => {}); });
 
   await load();
-  const timer = window.setInterval(() => {
+  if (!closed) timer = window.setInterval(() => {
     if (!closed && document.visibilityState === 'visible') void load();
   }, 12000);
 }
