@@ -25,6 +25,8 @@ create index client_sms_messages_unread_idx
   where direction = 'inbound' and read_at is null;
 create index client_sms_messages_phone_idx
   on public.client_sms_messages (from_number, to_number);
+create index client_sms_messages_user_id_idx
+  on public.client_sms_messages (user_id);
 
 alter table public.client_sms_messages enable row level security;
 
