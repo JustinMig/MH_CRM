@@ -7,6 +7,7 @@ import { installPullToRefresh } from './pull-to-refresh.js';
 import { installDashboardCleanup } from './dashboard-cleanup.js';
 import { installAppointmentSingleAgent } from './appointment-ui.js';
 import { installCarrierVault } from './carriers-ui.js';
+import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -59,6 +60,10 @@ async function start() {
     const signedIn = await mhRepository.initialize();
     if (!signedIn) { authScreen(); return; }
     if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
+    // M&H and Sheena's Mayer view now use the same underlying Justin calendar.
+    // Install the bridge before the workspace renders so the first calendar load
+    // already contains the shared Mayer events instead of the unused local table.
+    installMayerJustinCalendar();
     createWorkspace(root, mhRepository);
     installDashboardCleanup(root);
     installAppointmentSingleAgent(root, mhRepository);
