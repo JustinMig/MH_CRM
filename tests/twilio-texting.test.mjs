@@ -26,6 +26,19 @@ test('M&H texting keeps the Mayer inbound webhook untouched', async () => {
   assert.doesNotMatch(server, /crm\.mayerig\.com\/api\/twilio\/incoming/);
 });
 
+test('Communications only shows conversations tied to saved M&H clients', async () => {
+  const [server, center] = await Promise.all([
+    text('server/communications.js'),
+    text('communications-ui.js')
+  ]);
+  assert.match(server, /getAllClientPhones\(\)/);
+  assert.match(server, /matches\.length !== 1/);
+  assert.match(center, /const client = byId\.get\(message\.client_id\)/);
+  assert.match(center, /if \(!client\) continue/);
+  assert.doesNotMatch(center, /byId\.get\(message\.client_id\) \|\|/);
+  assert.match(center, /Only clients saved in M&H CRM are shown/);
+});
+
 test('Texting UI is loaded without broad mutation observers', async () => {
   const [index, client, center] = await Promise.all([
     text('index.html'),
@@ -33,7 +46,7 @@ test('Texting UI is loaded without broad mutation observers', async () => {
     text('communications-ui.js')
   ]);
   assert.match(index, /client-texting\.js\?v=1/);
-  assert.match(index, /communications-ui\.js\?v=1/);
+  assert.match(index, /communications-ui\.js\?v=2/);
   assert.match(index, /client-texting\.css\?v=1/);
   assert.match(index, /communications-ui\.css\?v=1/);
   assert.doesNotMatch(client, /MutationObserver/);
