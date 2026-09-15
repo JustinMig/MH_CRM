@@ -75,6 +75,7 @@ async function start() {
     void import('./communications-ui.js?v=communications-perf-2')
       .then(() => import('./ringcentral-readonly.js?v=readonly-calls-2'))
       .then(() => import('./ringcentral-ui-adjustments.js?v=footer-call-data-1'))
+      .then(() => import('./communications-layout-fix.js?v=communications-layout-1'))
       .catch(error => {
         console.error('Communications UI failed to load.', error);
       });
