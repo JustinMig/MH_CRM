@@ -1,0 +1,81 @@
+name: Apply and verify MIG audit fixes
+on:
+  push:
+    branches: [fix/mig-audit-20260915]
+    paths:
+      - .github/workflows/mig-apply-verified-fixes.yml
+      - tools/approved-fix.*.b64
+permissions:
+  contents: write
+concurrency:
+  group: mig-approved-fix-application
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/mig-audit-20260915
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Decode and verify exact approved patch
+        run: |
+          python - <<'PY'
+          import base64, hashlib, lzma, pathlib
+          parts = [pathlib.Path(f'tools/approved-fix.{i}.b64').read_bytes().strip() for i in range(1,5)]
+          for i,p in enumerate(parts,1): print('segment',i,'bytes',len(p),'sha256',hashlib.sha256(p).hexdigest())
+          patch = lzma.decompress(base64.b64decode(b''.join(parts), validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '8ca4aa8b58009de91a8b502c6a8616fbf684a96b577de8c52db5f697837ff938', 'Approved patch checksum mismatch'
+          pathlib.Path('/tmp/approved.patch').write_bytes(patch)
+          PY
+          git apply --check /tmp/approved.patch
+          git apply /tmp/approved.patch
+      - name: Prepare approved local branding images
+        run: |
+          python -m pip install --disable-pip-version-check Pillow==12.3.0
+          curl --fail --silent --show-error --max-time 30 'https://crm.mayerig.com/mayer-bear.png' -o /tmp/mayer-bear.png
+          python scripts/prepare-brand.py /tmp/mayer-bear.png
+      - name: Lock and install pinned dependencies
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-fund
+          npm ci --ignore-scripts --no-fund
+      - name: Run full regression suite, syntax checks, and build
+        run: |
+          mkdir -p test-results
+          set -o pipefail
+          npm test | tee test-results/unit-tests.txt
+          node scripts/check-syntax.mjs | tee test-results/syntax.txt
+          npm run build | tee test-results/build.txt
+          npm audit --omit=dev --audit-level=high | tee test-results/dependency-audit.txt
+      - name: Install isolated browser test tools
+        run: npm install --prefix /tmp/mig-browser --ignore-scripts --no-audit --no-fund playwright@1.55.0
+      - name: Run synthetic browser and built-application regressions
+        run: |
+          set -o pipefail
+          NODE_PATH=/tmp/mig-browser/node_modules node tests/browser-regressions.cjs | tee test-results/browser-output.txt
+      - name: Commit only verified fixes to the isolated branch
+        run: |
+          git rm tools/approved-fix.*.b64 .github/workflows/mig-apply-verified-fixes.yml .github/workflows/mig-fix-source.yml
+          git add -A
+          git reset -- test-results build-metafile.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Fix audited MIG communication identity, recovery, startup speed and access boundaries'
+          git push origin HEAD:fix/mig-audit-20260915
+      - name: Preserve verification results and source snapshot
+        if: always()
+        run: |
+          mkdir -p /tmp/mig-verification
+          tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=test-results --exclude='.env*' -cf /tmp/mig-verification/source.tar .
+          test ! -d test-results || cp -r test-results /tmp/mig-verification/
+          test ! -f build-metafile.json || cp build-metafile.json /tmp/mig-verification/
+          git rev-parse HEAD > /tmp/mig-verification/commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mig-approved-fix-verification
+          path: /tmp/mig-verification
+          retention-days: 7
