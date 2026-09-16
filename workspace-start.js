@@ -2,7 +2,6 @@ import { makeClientSearch } from './client-age-search.js';
 import { createCampaignRepository } from './campaigns-repository.js';
 import { createWorkspace } from './workspace.js';
 import { mhRepository, supabase } from './supabase-repository.js';
-import './repository-commissions-fix.js?v=1';
 import './username-user-access.js?v=1';
 import { installAdminUsers } from './admin-users.js';
 import { installPullToRefresh } from './pull-to-refresh.js';
@@ -15,6 +14,7 @@ import { installClientDelete } from './client-delete.js';
 import { installSimpleDashboardNote } from './dashboard-note-simple.js';
 import { installClientDateAndDragDrop } from './client-date-dragdrop.js';
 import { installClientDuplicateCheck } from './client-duplicate-check.js?v=1';
+import { installFastNavigation } from './navigation-speed.js?v=2';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -46,10 +46,11 @@ export async function startWorkspace() {
   document.body.dataset.singleAgent = String(mhRepository.agents.length <= 1);
   if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
   if (['owner','admin'].includes(mhRepository.profile?.role)) installMayerJustinCalendar();
-  await import('./workspace-extensions.js?v=ssn-fix-3');
+  await import('./workspace-extensions.js?v=cleanup-1');
   installClientDuplicateCheck();
   await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
+  installFastNavigation(root);
   createWorkspace(root, mhRepository);
   await import('./top-add-client.js?v=4');
   installClientAgeFilter(root);
@@ -62,11 +63,11 @@ export async function startWorkspace() {
   installCarrierVault(root);
   applyCurrentUserToClientSearch();
 
-  void import('./communications-ui.js?v=communications-perf-2')
-    .then(() => import('./ringcentral-readonly.js?v=readonly-calls-2'))
-    .then(() => import('./ringcentral-ui-adjustments.js?v=footer-call-data-1'))
-    .then(() => import('./communications-layout-fix.js?v=communications-layout-1'))
-    .then(() => import('./communications-delete.js?v=communications-delete-1'))
-    .then(() => import('./communications-open-client.js?v=communications-open-client-1'))
+  void import('./communications-ui.js?v=communications-perf-3')
+    .then(() => import('./ringcentral-readonly.js?v=readonly-calls-3'))
+    .then(() => import('./ringcentral-ui-adjustments.js?v=footer-call-data-2'))
+    .then(() => import('./communications-layout-fix.js?v=communications-layout-2'))
+    .then(() => import('./communications-delete.js?v=communications-delete-2'))
+    .then(() => import('./communications-open-client.js?v=communications-open-client-2'))
     .catch(error => console.error('Communications UI failed to load.', error));
 }
