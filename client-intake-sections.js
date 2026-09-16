@@ -3,7 +3,8 @@ import { Dialogs } from './dialogs.js';
 const GROUPS = [
   { key: 'name', title: 'Client Name', fields: ['first_name', 'last_name'] },
   { key: 'demographics', title: 'Date of Birth & Gender', fields: ['date_of_birth', 'gender'] },
-  { key: 'contact', title: 'Email & Phone', fields: ['email', 'phone', 'ssn'] },
+  { key: 'social', title: 'Social Security Number', fields: ['ssn'] },
+  { key: 'contact', title: 'Email & Phone', fields: ['email', 'phone'] },
   { key: 'address', title: 'Address', fields: ['address', 'city', 'county', 'state', 'zip'] },
   { key: 'household', title: 'Client Assignment & Household', fields: ['assigned_agent_id', 'spouse'] }
 ];
