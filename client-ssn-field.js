@@ -2,9 +2,11 @@ import { Dialogs } from './dialogs.js';
 
 function ensureSsnField(form) {
   if (!(form instanceof HTMLFormElement)) return;
-  const phone = form.elements.namedItem('phone');
-  const phoneField = phone instanceof HTMLElement ? phone.closest('label.field') : null;
-  if (!phoneField) return;
+  const dob = form.elements.namedItem('date_of_birth');
+  const gender = form.elements.namedItem('gender');
+  const dobField = dob instanceof HTMLElement ? dob.closest('label.field') : null;
+  const genderField = gender instanceof HTMLElement ? gender.closest('label.field') : null;
+  if (!dobField && !genderField) return;
 
   let ssn = form.elements.namedItem('ssn');
   let ssnField = ssn instanceof HTMLElement ? ssn.closest('label.field') : null;
@@ -16,8 +18,22 @@ function ensureSsnField(form) {
     ssn = ssnField.querySelector('input[name="ssn"]');
   }
 
-  if (ssnField.previousElementSibling !== phoneField) {
-    phoneField.insertAdjacentElement('afterend', ssnField);
+  const demographicBox = (genderField || dobField)?.closest?.('[data-intake-section="demographics"]');
+  const existingSocialBox = form.querySelector('[data-intake-section="social"]');
+  if (demographicBox) {
+    let socialBox = existingSocialBox;
+    if (!socialBox) {
+      socialBox = document.createElement('section');
+      socialBox.className = 'intake-section-box intake-section-social span-all';
+      socialBox.dataset.intakeSection = 'social';
+      socialBox.setAttribute('aria-label', 'Social Security Number');
+      socialBox.innerHTML = '<div class="intake-section-title span-all"><strong>Social Security Number</strong></div>';
+    }
+    if (ssnField.parentElement !== socialBox) socialBox.append(ssnField);
+    if (socialBox.previousElementSibling !== demographicBox) demographicBox.insertAdjacentElement('afterend', socialBox);
+  } else {
+    const anchor = genderField || dobField;
+    if (anchor && ssnField.previousElementSibling !== anchor) anchor.insertAdjacentElement('afterend', ssnField);
   }
 
   if (ssn instanceof HTMLInputElement) {
