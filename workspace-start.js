@@ -9,6 +9,7 @@ import { installAppointmentSingleAgent } from './appointment-ui.js';
 import { installCarrierVault } from './carriers-ui.js';
 import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
 import { installClientAgeFilter } from './client-age-filter.js';
+import { installClientDelete } from './client-delete.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -44,6 +45,7 @@ export async function startWorkspace() {
   await import('./campaigns-smooth-load.js?v=1');
   createWorkspace(root, mhRepository);
   installClientAgeFilter(root);
+  installClientDelete(root, mhRepository);
   installDashboardCleanup(root);
   installAppointmentSingleAgent(root, mhRepository);
   installAdminUsers(root, mhRepository);
