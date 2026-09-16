@@ -93,7 +93,7 @@ async function openWorkspace() {
   root.innerHTML = '<div class="auth-loading" role="status">Opening your workspace…</div>';
   let sheet = document.querySelector('[data-workspace-css]');
   if (!sheet) {
-    sheet = document.createElement('link'); sheet.rel = 'stylesheet'; sheet.href = '/workspace-styles.css'; sheet.dataset.workspaceCss = '';
+    sheet = document.createElement('link'); sheet.rel = 'stylesheet'; sheet.href = '/workspace-styles.css?v=ssn-input-layout-1'; sheet.dataset.workspaceCss = '';
     const loaded = new Promise((resolve,reject) => {sheet.onload=resolve;sheet.onerror=()=>reject(new Error('Unable to load workspace styles. Refresh and retry.'));});
     document.head.append(sheet);
     try { await withTimeout(loaded); } catch (error) { sheet.remove(); throw error; }
