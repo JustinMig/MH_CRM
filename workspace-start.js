@@ -51,7 +51,7 @@ export async function startWorkspace() {
   await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
   createWorkspace(root, mhRepository);
-  await import('./top-add-client.js?v=3');
+  await import('./top-add-client.js?v=4');
   installClientAgeFilter(root);
   installClientDelete(root, mhRepository);
   installSimpleDashboardNote(root);
