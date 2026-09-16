@@ -27,6 +27,7 @@ import './new-client-medicare-uploads.js';
 import './client-file-experience.js';
 import './life-policy-documents.js';
 import './client-audit-fixes.js';
+import './secure-license-dirty.js';
 import './client-pharmacy-postsave.js';
 import './client-notes-extras.js';
 import './client-imported-documents.js';
