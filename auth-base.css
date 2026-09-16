@@ -1,0 +1,6 @@
+@import "./auth.css";
+:root{color-scheme:light;font-family:Inter,"Segoe UI",Arial,sans-serif;background:#07131c;color:#172033}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.6;cursor:wait}[hidden]{display:none!important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 13px;border:1px solid transparent;border-radius:10px;font-size:14px;font-weight:800;line-height:1.3}
+.btn.primary{background:#18324a;border-color:#18324a;color:#fff}.btn.secondary{background:#f1f5f8;border-color:#cbd7e0;color:#334d60}
+button:focus-visible,a:focus-visible{outline:3px solid #2f82bf;outline-offset:3px}.auth-card small{color:#526171}.auth-card img{aspect-ratio:1}.auth-message[role="alert"]{border-color:#bd786d;color:#7f2b21;background:#fff4f2}

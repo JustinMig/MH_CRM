@@ -1,4 +1,4 @@
-import { adminRest, requireCrmUser } from '../server/communications.js';
+import { adminRest, requireCrmUser, getClients } from '../server/communications.js';
 
 const MAYER_CALL_BRIDGE = 'https://crm.mayerig.com/api/mh-ringcentral/calls';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,16 +27,22 @@ function cleanCall(row) {
 
 export async function GET(request) {
   try {
-    await requireCrmUser(request);
+    const user = await requireCrmUser(request);
     const authorization = request.headers.get('authorization') || '';
     const response = await fetch(MAYER_CALL_BRIDGE, {
       headers: { Authorization: authorization, Accept: 'application/json' },
-      cache: 'no-store'
+      cache: 'no-store', signal: AbortSignal.timeout(25000)
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw Object.assign(new Error(payload.error || 'Unable to read RingCentral call data from Mayer CRM.'), { status: response.status });
 
     const calls = Array.isArray(payload.calls) ? payload.calls.map(cleanCall).filter(Boolean) : [];
+    const allowed = new Set();
+    const ids = [...new Set(calls.map(call => call.client_id))];
+    for (let offset = 0; offset < ids.length; offset += 250) {
+      for (const client of await getClients(ids.slice(offset, offset + 250), user)) allowed.add(client.id);
+    }
+    if (calls.some(call => !allowed.has(call.client_id))) throw Object.assign(new Error('Call data contains an unauthorized client.'), {status:403});
     for (let i = 0; i < calls.length; i += 100) {
       await adminRest('/rest/v1/ringcentral_calls?on_conflict=source_call_id', {
         method: 'POST',

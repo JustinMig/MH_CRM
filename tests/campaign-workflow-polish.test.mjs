@@ -4,7 +4,8 @@ import fs from 'node:fs';
 
 const js = fs.readFileSync(new URL('../campaign-workflow-polish.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../campaign-workflow-polish.css', import.meta.url), 'utf8');
-const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('../workspace-extensions.js', import.meta.url), 'utf8');
+const styles = fs.readFileSync(new URL('../workspace-styles.css', import.meta.url), 'utf8');
 
 test('client search gets a select-all results campaign action', () => {
   assert.match(js, /Select All Results → Campaign/);
@@ -28,7 +29,7 @@ test('campaign cards receive multiple muted color tones', () => {
   assert.match(js, /index % 8/);
 });
 
-test('production index loads campaign workflow polish assets', () => {
-  assert.match(html, /campaign-workflow-polish\.css/);
+test('authenticated feature bundle retains campaign workflow polish assets', () => {
+  assert.match(styles, /campaign-workflow-polish\.css/);
   assert.match(html, /campaign-workflow-polish\.js/);
 });

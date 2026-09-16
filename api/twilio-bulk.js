@@ -27,7 +27,8 @@ export async function POST(request) {
     if (!body) return Response.json({ error: 'Enter a message.' }, { status: 400 });
     if (body.length > 1500) return Response.json({ error: 'Message is too long.' }, { status: 400 });
 
-    const clients = await getClients(ids);
+    const clients = await getClients(ids, user);
+    if (clients.length !== ids.length) return Response.json({error:'One or more selected clients are unavailable. No messages were sent.'},{status:404});
     const found = new Set(clients.map(client => client.id));
     const failures = ids.filter(id => !found.has(id)).map(() => 'One selected client could not be found.');
     const results = await runPool(clients, client => sendClientSms(client, user.id, body));

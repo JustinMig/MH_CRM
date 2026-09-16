@@ -1,3 +1,4 @@
+import { communicationsChanged, releaseRecordings } from './communications-events.js';
 import { supabase } from './supabase-repository.js';
 import { updateGlobalUnread } from './client-texting.js';
 
@@ -34,83 +35,22 @@ function toast(message, error = false) {
   window.setTimeout(() => node.remove(), 3200);
 }
 
-function nowIso() { return new Date().toISOString(); }
-
-async function hideTextMessage(id) {
-  const now = nowIso();
-  const { error } = await supabase.from('client_sms_messages').update({ hidden_at: now, updated_at: now }).eq('id', id);
+async function hide(kind, id) {
+  const { error } = await supabase.rpc('hide_my_communication', { p_kind:kind, p_id:id });
   if (error) throw error;
 }
+const hideTextMessage = id => hide('text', id);
+const hideTextConversation = id => hide('conversation', id);
+const hideCall = id => hide('call', id);
 
-async function hideTextConversation(clientId) {
-  const now = nowIso();
-  const { error } = await supabase.from('client_sms_messages').update({ hidden_at: now, updated_at: now }).eq('client_id', clientId);
-  if (error) throw error;
+function refreshTextMetrics(clientId = '') {
+  communicationsChanged('texts', clientId);
+  return updateGlobalUnread().catch(() => {});
 }
-
-async function hideCall(id) {
-  const { error } = await supabase.from('ringcentral_calls').update({ hidden_at: nowIso() }).eq('id', id);
-  if (error) throw error;
+function refreshCallMetrics() {
+  communicationsChanged('calls');
 }
-
-async function visibleThreadMessages(clientId) {
-  const { data, error } = await supabase.from('client_sms_messages')
-    .select('id,direction,read_at,occurred_at,created_at')
-    .eq('client_id', clientId)
-    .order('occurred_at', { ascending:true })
-    .limit(500);
-  if (error) throw error;
-  return data || [];
-}
-
-async function visibleCalls(clientId = '', limit = 500) {
-  let query = supabase.from('ringcentral_calls')
-    .select('id,direction,recording_id,started_at')
-    .order('started_at', { ascending:false })
-    .limit(limit);
-  if (clientId) query = query.eq('client_id', clientId);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
-}
-
-async function refreshTextMetrics() {
-  const host = document.querySelector('#sms-communications-center');
-  if (!host) return;
-  const { data, error } = await supabase.from('client_sms_messages')
-    .select('client_id,direction,read_at')
-    .gte('occurred_at', MH_TEXT_START)
-    .order('occurred_at', { ascending:false })
-    .limit(1000);
-  if (!error) {
-    const rows = data || [];
-    const conversations = new Set(rows.map(row => row.client_id).filter(Boolean));
-    const unread = rows.filter(row => row.direction === 'inbound' && !row.read_at).length;
-    const total = host.querySelector('[data-sms-conversation-total]');
-    const unreadNode = host.querySelector('[data-sms-unread-total]');
-    if (total) total.textContent = String(conversations.size);
-    if (unreadNode) unreadNode.textContent = String(unread);
-  }
-  await updateGlobalUnread().catch(() => {});
-}
-
-async function refreshCallMetrics() {
-  const panel = document.querySelector('.mh-call-panel');
-  if (!panel) return;
-  const calls = await visibleCalls('', 500).catch(() => []);
-  const total = panel.querySelector('[data-call-total]');
-  const inbound = panel.querySelector('[data-call-inbound]');
-  const recordings = panel.querySelector('[data-call-recordings]');
-  if (total) total.textContent = String(calls.length);
-  if (inbound) inbound.textContent = String(calls.filter(call => call.direction === 'Inbound').length);
-  if (recordings) recordings.textContent = String(calls.filter(call => call.recording_id).length);
-}
-
-function revokeAudioInside(node) {
-  node?.querySelectorAll?.('audio').forEach(audio => {
-    if (String(audio.src || '').startsWith('blob:')) URL.revokeObjectURL(audio.src);
-  });
-}
+function revokeAudioInside(node) { releaseRecordings(node); }
 
 async function decorateConversationCards() {
   const container = document.querySelector('#sms-communications-center [data-sms-conversations]');
@@ -127,18 +67,18 @@ async function decorateConversationCards() {
     button.type = 'button';
     button.className = 'mh-comm-delete';
     button.textContent = 'Delete';
-    button.title = 'Remove this conversation from M&H CRM';
+    button.title = 'Remove this conversation from Mayer MIG CRM';
     wrap.append(button);
     button.onclick = async event => {
       event.preventDefault();
       event.stopPropagation();
-      if (!window.confirm('Delete this entire text conversation from M&H CRM?\n\nThe original Twilio records will not be deleted, and this conversation will stay hidden after future syncs.')) return;
+      if (!window.confirm('Delete this entire text conversation from Mayer MIG CRM?\n\nThe original Twilio records will not be deleted, and this conversation will stay hidden after future syncs.')) return;
       button.disabled = true;
       try {
         await hideTextConversation(clientId);
         wrap.remove();
-        await refreshTextMetrics();
-        toast('Text conversation removed from M&H CRM.');
+        await refreshTextMetrics(clientId);
+        toast('Text conversation removed from Mayer MIG CRM.');
       } catch (error) {
         button.disabled = false;
         toast(error instanceof Error ? error.message : 'Unable to delete the text conversation.', true);
@@ -153,15 +93,10 @@ async function decorateTextDialogs() {
     if (!dialog.isConnected) continue;
     const clientId = dialog.dataset.clientId || '';
     if (!clientId) continue;
-    let rows;
-    try { rows = await visibleThreadMessages(clientId); } catch { continue; }
-    if (!dialog.isConnected) continue;
-    const bubbles = Array.from(dialog.querySelectorAll('[data-sms-thread] > .sms-bubble'));
-    const count = Math.min(rows.length, bubbles.length);
-    for (let index = 0; index < count; index += 1) {
-      const bubble = bubbles[index];
-      const row = rows[index];
-      if (!row?.id || bubble.dataset.deleteMessageId === row.id) continue;
+    const bubbles = Array.from(dialog.querySelectorAll('[data-sms-thread] > .sms-bubble[data-message-id]'));
+    for (const bubble of bubbles) {
+      const row = { id: bubble.dataset.messageId };
+      if (!row.id || bubble.dataset.clientId !== clientId || bubble.dataset.deleteMessageId === row.id) continue;
       bubble.dataset.deleteMessageId = row.id;
       bubble.querySelector('.mh-message-delete-row')?.remove();
       const action = document.createElement('div');
@@ -175,15 +110,15 @@ async function decorateTextDialogs() {
       button.onclick = async event => {
         event.preventDefault();
         event.stopPropagation();
-        if (!window.confirm('Delete this text from M&H CRM?\n\nThe original Twilio record will remain, but this text will stay hidden in M&H after future syncs.')) return;
+        if (!window.confirm('Delete this text from Mayer MIG CRM?\n\nThe original Twilio record will remain, but this text will stay hidden in Mayer MIG after future syncs.')) return;
         button.disabled = true;
         try {
           await hideTextMessage(row.id);
           bubble.remove();
           const thread = dialog.querySelector('[data-sms-thread]');
           if (thread && !thread.querySelector('.sms-bubble')) thread.innerHTML = '<div class="sms-empty">No visible messages in this conversation.</div>';
-          await refreshTextMetrics();
-          toast('Text removed from M&H CRM.');
+          await refreshTextMetrics(clientId);
+          toast('Text removed from Mayer MIG CRM.');
         } catch (error) {
           button.disabled = false;
           toast(error instanceof Error ? error.message : 'Unable to delete the text.', true);
@@ -208,14 +143,16 @@ function addCallDeleteButton(rowNode, callId, afterDelete) {
   button.onclick = async event => {
     event.preventDefault();
     event.stopPropagation();
-    if (!window.confirm('Delete this call record from M&H CRM?\n\nThe original RingCentral call and recording will remain in RingCentral, but this call will stay hidden in M&H after future syncs.')) return;
+    if (!window.confirm('Delete this call record from Mayer MIG CRM?\n\nThe original RingCentral call and recording will remain in RingCentral, but this call will stay hidden in Mayer MIG after future syncs.')) return;
     button.disabled = true;
     try {
       await hideCall(callId);
       revokeAudioInside(rowNode);
-      rowNode.remove();
+      document.querySelectorAll('.mh-call-row[data-call-id]').forEach(node => {
+        if (node.dataset.callId === callId) { releaseRecordings(node); node.remove(); }
+      });
       await afterDelete?.();
-      toast('Call record removed from M&H CRM.');
+      toast('Call record removed from Mayer MIG CRM.');
     } catch (error) {
       button.disabled = false;
       toast(error instanceof Error ? error.message : 'Unable to delete the call record.', true);
@@ -223,39 +160,23 @@ function addCallDeleteButton(rowNode, callId, afterDelete) {
   };
 }
 
-async function decorateGlobalCalls() {
-  const panel = document.querySelector('.mh-call-panel');
-  const list = panel?.querySelector('[data-call-list]');
-  if (!panel || !list || panel.hidden) return;
-  let rows;
-  try { rows = await visibleCalls('', 500); } catch { return; }
-  if (!list.isConnected) return;
-  const nodes = Array.from(list.querySelectorAll(':scope > .mh-call-row'));
-  const count = Math.min(rows.length, nodes.length);
-  for (let index = 0; index < count; index += 1) addCallDeleteButton(nodes[index], rows[index].id, refreshCallMetrics);
+function decorateGlobalCalls() {
+  document.querySelectorAll('[data-call-list] > .mh-call-row[data-call-id]').forEach(row => {
+    addCallDeleteButton(row, row.dataset.callId, refreshCallMetrics);
+  });
 }
-
-async function decorateClientCallDialogs() {
-  const dialogs = Array.from(document.querySelectorAll('dialog.mh-call-data-dialog[data-client-id]'));
-  for (const dialog of dialogs) {
-    const clientId = dialog.dataset.clientId || '';
-    const list = dialog.querySelector('[data-client-call-dialog-list]');
-    if (!clientId || !list) continue;
-    let rows;
-    try { rows = await visibleCalls(clientId, 125); } catch { continue; }
-    if (!dialog.isConnected) continue;
-    const nodes = Array.from(list.querySelectorAll(':scope > .mh-call-row'));
-    const count = Math.min(rows.length, nodes.length);
-    for (let index = 0; index < count; index += 1) {
-      addCallDeleteButton(nodes[index], rows[index].id, async () => {
-        const remaining = await visibleCalls(clientId, 125).catch(() => []);
-        const recordings = remaining.filter(call => call.recording_id).length;
+function decorateClientCallDialogs() {
+  document.querySelectorAll('dialog.mh-call-data-dialog[data-client-id]').forEach(dialog => {
+    dialog.querySelectorAll('[data-client-call-dialog-list] > .mh-call-row[data-call-id]').forEach(row => {
+      addCallDeleteButton(row, row.dataset.callId, () => {
+        const remaining = dialog.querySelectorAll('.mh-call-row[data-call-id]');
+        const recordings = Array.from(remaining).filter(node => node.dataset.recordingId).length;
         const status = dialog.querySelector('[data-client-call-dialog-status]');
-        if (status) status.textContent = `${remaining.length} stored call${remaining.length === 1 ? '' : 's'}${recordings ? ` · ${recordings} recording${recordings === 1 ? '' : 's'}` : ''}`;
-        await refreshCallMetrics();
+        if (status) status.textContent = `${remaining.length} stored calls · ${recordings} recordings`;
+        refreshCallMetrics();
       });
-    }
-  }
+    });
+  });
 }
 
 async function scan() {
@@ -275,7 +196,7 @@ function scheduleScan() {
 }
 
 installStyles();
-new MutationObserver(scheduleScan).observe(document.body, { childList:true, subtree:true });
+window.addEventListener('mig:communications-rendered', scheduleScan);
 window.addEventListener('hashchange', scheduleScan);
 window.addEventListener('focus', scheduleScan);
 window.setTimeout(() => void scan(), 0);

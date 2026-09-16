@@ -1,154 +1,123 @@
-import { makeClientSearch } from './client-search.js';
-import { createCampaignRepository } from './campaigns-repository.js';
-import { createWorkspace } from './workspace.js';
-import { mhRepository, supabase } from './supabase-repository.js';
-import { installAdminUsers } from './admin-users.js';
-import { installPullToRefresh } from './pull-to-refresh.js';
-import { installDashboardCleanup } from './dashboard-cleanup.js';
-import { installAppointmentSingleAgent } from './appointment-ui.js';
-import { installCarrierVault } from './carriers-ui.js';
-import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
+import { supabase, initialAuthUrl } from './supabase-client.js';
+import { recoveryContext, withTimeout } from './auth-flow.js';
 
 const root = document.querySelector('#app');
-installPullToRefresh();
-
-mhRepository.searchClients = makeClientSearch(supabase);
-mhRepository.campaigns = createCampaignRepository(supabase);
-
-function applyCurrentUserToClientSearch(form = root.querySelector('#client-search')) {
-  if (!form || !mhRepository.user?.id) return;
-  const agent = form.elements.namedItem('agent');
-  if (!agent || agent.value === mhRepository.user.id) return;
-  agent.value = mhRepository.user.id;
-  agent.dispatchEvent(new Event('input', { bubbles: true }));
-  agent.dispatchEvent(new Event('change', { bubbles: true }));
+const context = recoveryContext(initialAuthUrl || location.href);
+const recoveryKey = 'mig-password-recovery';
+let recoveryUserId = '';
+let suppressSignOutReload = false;
+let workspaceStarted = false;
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function clearCallback() { history.replaceState(null, '', '/'); }
+function rememberRecovery(userId) {
+  recoveryUserId = userId;
+  try { sessionStorage.setItem(recoveryKey, JSON.stringify({ userId, expires:Date.now()+1800000 })); } catch {}
+  history.replaceState(null, '', '/?recovery=1');
 }
-
-root.addEventListener('submit', event => {
-  if (event.target?.id === 'client-search') applyCurrentUserToClientSearch(event.target);
-}, true);
-root.addEventListener('click', event => {
-  if (event.target?.closest?.('[data-reset-search]')) setTimeout(() => applyCurrentUserToClientSearch(), 0);
-}, true);
-new MutationObserver(() => applyCurrentUserToClientSearch()).observe(root, { childList: true, subtree: true });
-
-const recoveryRequested = () => new URLSearchParams(location.search).get('recovery') === '1' || location.hash.includes('type=recovery');
-
-function cleanRecoveryUrl() {
-  try {
-    history.replaceState(null, '', `${location.origin}/`);
-  } catch {}
+function forgetRecovery() { recoveryUserId = ''; try { sessionStorage.removeItem(recoveryKey); } catch {} }
+function rememberedRecovery() {
+  try { const saved = JSON.parse(sessionStorage.getItem(recoveryKey) || 'null'); return saved?.expires > Date.now() ? saved.userId : ''; } catch { return ''; }
 }
-
-function authScreen(message = '') {
-  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="https://crm.mayerig.com/mayer-bear.png?v=mig-1" alt="Mayer MIG bear"><h1>Mayer MIG CRM</h1><p>Sign in to Mayer MIG CRM.</p>${message ? `<div class="auth-message">${message}</div>` : ''}<form id="signin-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><label>Password <input name="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="auth-actions"><button class="btn primary" type="submit">Sign In</button><button class="btn secondary" type="button" data-forgot-password>Forgot password?</button></div></form><small>Accounts are added by a Mayer MIG CRM Owner or Admin. Public account creation is disabled.</small></section></main>`;
-  const form = root.querySelector('#signin-form');
-  form.onsubmit = async e => {
-    e.preventDefault();
-    const button = form.querySelector('button[type="submit"]');
-    button.disabled = true;
+function frame(title, copy, content, message = '', error = false) {
+  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="/assets/mayer-bear.webp" width="192" height="192" alt="Mayer MIG bear"><h1>${esc(title)}</h1><p>${esc(copy)}</p>${message ? `<div class="auth-message" role="${error ? 'alert' : 'status'}">${esc(message)}</div>` : ''}${content}</section></main>`;
+}
+function signInScreen(message = '', error = false) {
+  forgetRecovery(); clearCallback();
+  frame('Mayer MIG CRM','Sign in to Mayer MIG CRM.', `<form id="signin-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><label>Password <input name="password" type="password" autocomplete="current-password" required></label><div class="auth-actions"><button class="btn primary" type="submit">Sign In</button><button class="btn secondary" type="button" data-forgot-password>Forgot password?</button></div></form><small>Accounts are added by a Mayer MIG CRM Owner or Admin. Public account creation is disabled.</small>`,message,error);
+  root.querySelector('[data-forgot-password]').onclick = () => requestResetScreen();
+  root.querySelector('form').onsubmit = async event => {
+    event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('[type="submit"]'); button.disabled = true;
     try {
-      const data = new FormData(form);
-      await mhRepository.signIn(String(data.get('email') || '').trim(), String(data.get('password') || ''));
-      location.hash = '#/dashboard';
-      location.reload();
-    } catch (error) {
-      authScreen(`<b>Sign in failed:</b> ${error.message || 'Please check your email and password.'}`);
-    }
-  };
-  root.querySelector('[data-forgot-password]')?.addEventListener('click', () => requestResetScreen());
-}
-
-function requestResetScreen(message = '') {
-  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="https://crm.mayerig.com/mayer-bear.png?v=mig-1" alt="Mayer MIG bear"><h1>Reset Password</h1><p>Enter the email you use for Mayer MIG CRM.</p>${message ? `<div class="auth-message">${message}</div>` : ''}<form id="reset-request-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><div class="auth-actions"><button class="btn primary" type="submit">Send Reset Link</button><button class="btn secondary" type="button" data-back-signin>Back to Sign In</button></div></form><small>The reset link will return you to Mayer MIG CRM to choose a new password.</small></section></main>`;
-  const form = root.querySelector('#reset-request-form');
-  form.onsubmit = async e => {
-    e.preventDefault();
-    const button = form.querySelector('button[type="submit"]');
-    button.disabled = true;
-    const email = String(new FormData(form).get('email') || '').trim();
-    try {
-      const redirectTo = `${location.origin}/?recovery=1`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const values = new FormData(form);
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({email:String(values.get('email') || '').trim(),password:String(values.get('password') || '')}));
       if (error) throw error;
-      requestResetScreen('<b>Reset email sent.</b> Check your inbox and click the newest password-reset link.');
-    } catch (error) {
-      requestResetScreen(`<b>Could not send reset email:</b> ${error.message || 'Please try again.'}`);
-    }
+      await openWorkspace();
+    } catch (error) { signInScreen(error.message || 'Unable to sign in. Please retry.',true); }
   };
-  root.querySelector('[data-back-signin]')?.addEventListener('click', () => authScreen());
 }
-
-function passwordResetScreen(message = '') {
-  root.innerHTML = `<main class="auth-shell"><section class="auth-card"><img src="https://crm.mayerig.com/mayer-bear.png?v=mig-1" alt="Mayer MIG bear"><h1>Choose New Password</h1><p>Set a new password for your Mayer MIG CRM account.</p>${message ? `<div class="auth-message">${message}</div>` : ''}<form id="new-password-form"><label>New Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm New Password <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label><div class="auth-actions"><button class="btn primary" type="submit">Save New Password</button></div></form><small>Use at least 8 characters. After saving, you will return to the sign-in screen.</small></section></main>`;
-  const form = root.querySelector('#new-password-form');
-  form.onsubmit = async e => {
-    e.preventDefault();
-    const button = form.querySelector('button[type="submit"]');
-    button.disabled = true;
-    const data = new FormData(form);
-    const password = String(data.get('password') || '');
-    const confirm = String(data.get('confirm_password') || '');
-    if (password.length < 8) {
-      passwordResetScreen('<b>Password is too short.</b> Use at least 8 characters.');
-      return;
-    }
-    if (password !== confirm) {
-      passwordResetScreen('<b>Passwords do not match.</b> Enter the same password in both boxes.');
-      return;
-    }
+function requestResetScreen(message = '', error = false) {
+  forgetRecovery(); clearCallback();
+  frame('Reset Password','Enter the email you use for Mayer MIG CRM.', `<form id="reset-request-form"><label>Email <input name="email" type="email" autocomplete="username" inputmode="email" required></label><div class="auth-actions"><button class="btn primary" type="submit">Send Reset Link</button><button class="btn secondary" type="button" data-back-signin>Back to Sign In</button></div></form><small>Use the newest reset email. The link will open the password-change screen.</small>`,message,error);
+  root.querySelector('[data-back-signin]').onclick = () => signInScreen();
+  root.querySelector('form').onsubmit = async event => {
+    event.preventDefault(); const form = event.currentTarget; form.querySelector('[type="submit"]').disabled = true;
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const email = String(new FormData(form).get('email') || '').trim();
+      const { error } = await withTimeout(supabase.auth.resetPasswordForEmail(email,{redirectTo:`${location.origin}/?recovery=1`}));
       if (error) throw error;
-      await supabase.auth.signOut();
-      cleanRecoveryUrl();
-      authScreen('<b>Password changed successfully.</b> Sign in with your new password.');
-    } catch (error) {
-      passwordResetScreen(`<b>Could not change password:</b> ${error.message || 'The reset link may have expired. Request a new reset email.'}`);
-    }
+      requestResetScreen('If this email belongs to an account, a reset link has been sent. Check your inbox and spam folder.');
+    } catch (error) { requestResetScreen(error.message || 'Unable to send the email. Please retry.',true); }
   };
 }
-
-async function start() {
-  root.innerHTML = '<div class="auth-loading">Connecting securely to the Mayer MIG database…</div>';
-  try {
-    const signedIn = await mhRepository.initialize();
-    if (recoveryRequested()) {
-      if (signedIn) passwordResetScreen();
-      else root.innerHTML = '<div class="auth-loading">Opening your secure password reset…</div>';
-      return;
+function invalidReset(message = 'This password-reset link has expired or is invalid. Request a new link and open the newest email.') {
+  forgetRecovery(); clearCallback();
+  frame('Reset Link Unavailable','Your password has not been changed.', '<div class="auth-actions"><button class="btn primary" data-new-reset>Request New Link</button><button class="btn secondary" data-back-signin>Back to Sign In</button></div>',message,true);
+  root.querySelector('[data-new-reset]').onclick = () => requestResetScreen();
+  root.querySelector('[data-back-signin]').onclick = () => signInScreen();
+}
+function passwordResetScreen(message = '', error = false) {
+  frame('Choose New Password','Set a new password for your Mayer MIG CRM account.', '<form id="new-password-form"><label>New Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm New Password <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></label><div class="auth-actions"><button class="btn primary" type="submit">Save New Password</button><button class="btn secondary" type="button" data-new-reset>Request New Link</button></div></form><small>Use at least 8 characters. You will sign in again after saving.</small>',message,error);
+  root.querySelector('[data-new-reset]').onclick = () => requestResetScreen();
+  root.querySelector('form').onsubmit = async event => {
+    event.preventDefault(); const form = event.currentTarget; const values = new FormData(form);
+    const password = String(values.get('password') || '');
+    if (password.length < 8) return passwordResetScreen('Use at least 8 characters.',true);
+    if (password !== String(values.get('confirm_password') || '')) return passwordResetScreen('Passwords do not match. Enter the same password in both boxes.',true);
+    form.querySelector('[type="submit"]').disabled = true;
+    let passwordSaved = false;
+    try {
+      const { data, error: userError } = await withTimeout(supabase.auth.getUser());
+      if (userError || !data?.user?.id || data.user.id !== recoveryUserId) return invalidReset();
+      const { error } = await withTimeout(supabase.auth.updateUser({ password }));
+      if (error) throw error;
+      passwordSaved = true;
+      // Clear callback state BEFORE sign-out events, preventing the old reload loop.
+      suppressSignOutReload = true; forgetRecovery(); clearCallback();
+      const { error: signOutError } = await withTimeout(supabase.auth.signOut());
+      signInScreen(signOutError ? 'Password changed. Sign-out could not be confirmed; close other CRM tabs and sign in with your new password.' : 'Password changed successfully. Sign in with your new password.');
+    } catch (error) {
+      if (passwordSaved) signInScreen('Password changed. Sign-out could not be confirmed; close other CRM tabs and sign in with your new password.');
+      else passwordResetScreen(error.message || 'Unable to change the password. Request a new link.',true);
     }
-    if (!signedIn) { authScreen(); return; }
-    if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
-    installMayerJustinCalendar();
-    createWorkspace(root, mhRepository);
-    installDashboardCleanup(root);
-    installAppointmentSingleAgent(root, mhRepository);
-    installAdminUsers(root, mhRepository);
-    installCarrierVault(root);
-    applyCurrentUserToClientSearch();
-
-    void import('./communications-ui.js?v=communications-perf-2')
-      .then(() => import('./ringcentral-readonly.js?v=readonly-calls-2'))
-      .then(() => import('./ringcentral-ui-adjustments.js?v=footer-call-data-1'))
-      .then(() => import('./communications-layout-fix.js?v=communications-layout-1'))
-      .then(() => import('./communications-delete.js?v=communications-delete-1'))
-      .then(() => import('./communications-open-client.js?v=communications-open-client-1'))
-      .catch(error => {
-        console.error('Communications UI failed to load.', error);
-      });
-  } catch (error) {
-    authScreen(`<b>Database connection error:</b> ${error.message || 'Please retry.'}`);
+    finally { suppressSignOutReload = false; }
+  };
+}
+async function openWorkspace() {
+  if (workspaceStarted) return;
+  root.innerHTML = '<div class="auth-loading" role="status">Opening your workspace…</div>';
+  let sheet = document.querySelector('[data-workspace-css]');
+  if (!sheet) {
+    sheet = document.createElement('link'); sheet.rel = 'stylesheet'; sheet.href = '/workspace-styles.css'; sheet.dataset.workspaceCss = '';
+    const loaded = new Promise((resolve,reject) => {sheet.onload=resolve;sheet.onerror=()=>reject(new Error('Unable to load workspace styles. Refresh and retry.'));});
+    document.head.append(sheet);
+    try { await withTimeout(loaded); } catch (error) { sheet.remove(); throw error; }
   }
+  const { startWorkspace } = await withTimeout(import('./workspace-start.js'),20000);
+  root.inert = true;
+  try { await startWorkspace(); workspaceStarted = true; }
+  finally { root.inert = false; }
 }
-
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY') {
-    mhRepository.user = session?.user || null;
-    passwordResetScreen();
-    return;
-  }
-  if (event === 'SIGNED_OUT' && !root.querySelector('#signin-form')) location.reload();
+  // No asynchronous Auth calls inside this callback (avoids SDK lock deadlocks).
+  if (event === 'PASSWORD_RECOVERY' && session?.user?.id) recoveryUserId = session.user.id;
+  if (event === 'SIGNED_OUT' && workspaceStarted && !suppressSignOutReload) location.reload();
 });
-
-start();
+async function start() {
+  try {
+    const { data, error } = await withTimeout(supabase.auth.getSession());
+    if (context.requested || recoveryUserId) {
+      if (context.invalid || error || !data?.session) return invalidReset();
+      const candidate = recoveryUserId || (context.tokenCallback ? data.session.user?.id : rememberedRecovery());
+      if (!candidate) return invalidReset();
+      const { data: verified, error: verifyError } = await withTimeout(supabase.auth.getUser());
+      if (verifyError || verified?.user?.id !== candidate) return invalidReset();
+      rememberRecovery(candidate); passwordResetScreen(); return;
+    }
+    if (error || !data?.session) return signInScreen();
+    await openWorkspace();
+  } catch (error) {
+    if (context.requested) invalidReset(error.message || 'Unable to verify the reset link. Request a new one.');
+    else signInScreen(error.message || 'Unable to connect. Please retry.',true);
+  }
+}
+void start();

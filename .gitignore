@@ -4,3 +4,7 @@
 .vercel
 node_modules
 *.log
+
+node_modules/
+dist/
+build-metafile.json

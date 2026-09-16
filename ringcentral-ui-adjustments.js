@@ -1,3 +1,4 @@
+import { communicationsRendered, releaseRecordings } from './communications-events.js';
 import { supabase } from './supabase-repository.js';
 import { smsAuthHeaders } from './client-texting.js';
 
@@ -51,7 +52,7 @@ function phoneText(value) {
 function callMarkup(call) {
   const number = call.contact_phone || (call.direction === 'Inbound' ? call.from_phone : call.to_phone) || call.client?.phone || '';
   const result = call.result || (call.direction === 'Inbound' ? 'Inbound call' : 'Outbound call');
-  return `<article class="mh-call-row ${String(call.direction || '').toLowerCase()}">
+  return `<article class="mh-call-row ${String(call.direction || '').toLowerCase()}" data-call-id="${esc(call.id)}" data-client-id="${esc(call.client_id)}" data-call-direction="${esc(call.direction)}" data-recording-id="${esc(call.recording_id || '')}">
     <div class="mh-call-row-head"><div><span class="mh-call-direction">${esc(call.direction || 'Call')}</span></div><span class="mh-call-time">${esc(dateTime(call.started_at))}</span></div>
     <div class="mh-call-meta"><span>${esc(result)}</span><span>${esc(durationText(call.duration_seconds))}</span>${number ? `<span>${esc(phoneText(number))}</span>` : ''}</div>
     ${call.recording_id ? `<div class="mh-recording-wrap" data-client-recording-wrap="${esc(call.recording_id)}"><button type="button" class="btn secondary" data-client-load-recording="${esc(call.recording_id)}">▶ Play Recording</button></div>` : ''}
@@ -76,6 +77,7 @@ async function bindRecordings(host) {
           throw new Error(payload.error || 'Unable to load recording.');
         }
         const blob = await response.blob();
+        if (!wrap.isConnected) return;
         const audio = document.createElement('audio');
         audio.controls = true;
         audio.preload = 'metadata';
@@ -110,10 +112,12 @@ async function drawDialog(dialog, clientId) {
   try {
     const calls = await loadClientCalls(clientId);
     if (!dialog.isConnected) return;
+    releaseRecordings(list);
     list.innerHTML = calls.length ? calls.map(callMarkup).join('') : '<div class="mh-client-call-empty">No RingCentral calls are stored for this client yet.</div>';
     const recordings = calls.filter(call => call.recording_id).length;
     status.textContent = `${calls.length} stored call${calls.length === 1 ? '' : 's'}${recordings ? ` · ${recordings} recording${recordings === 1 ? '' : 's'}` : ''}`;
     await bindRecordings(list);
+    communicationsRendered(list);
   } catch (error) {
     if (dialog.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load client call history.';
   }
@@ -127,12 +131,13 @@ function openClientCallDialog(clientId, clientDialog) {
   const dialog = document.createElement('dialog');
   dialog.className = 'mh-call-data-dialog';
   dialog.dataset.clientId = clientId;
-  dialog.innerHTML = `<div class="mh-call-data-frame"><header class="mh-call-data-head"><div><span class="eyebrow">RingCentral</span><h2>${esc(name)} — Call Data</h2><p>Read-only call history and recordings. Calling is not enabled in M&amp;H CRM.</p></div><div class="mh-call-data-actions"><button type="button" class="btn secondary" data-client-call-refresh>Refresh</button><button type="button" class="btn secondary" data-client-call-close>Close</button></div></header><div class="mh-call-data-status" data-client-call-dialog-status>Loading call history…</div><div class="mh-call-data-list" data-client-call-dialog-list></div></div>`;
+  dialog.innerHTML = `<div class="mh-call-data-frame"><header class="mh-call-data-head"><div><span class="eyebrow">RingCentral</span><h2>${esc(name)} — Call Data</h2><p>Read-only call history and recordings. Calling is not enabled in Mayer MIG CRM.</p></div><div class="mh-call-data-actions"><button type="button" class="btn secondary" data-client-call-refresh>Refresh</button><button type="button" class="btn secondary" data-client-call-close>Close</button></div></header><div class="mh-call-data-status" data-client-call-dialog-status>Loading call history…</div><div class="mh-call-data-list" data-client-call-dialog-list></div></div>`;
   document.body.append(dialog);
   dialog.showModal();
+  communicationsRendered(dialog);
   dialog.querySelector('[data-client-call-close]').onclick = () => dialog.close();
   dialog.addEventListener('cancel', event => { event.preventDefault(); dialog.close(); });
-  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('close', () => { releaseRecordings(dialog); dialog.remove(); });
   dialog.querySelector('[data-client-call-refresh]').onclick = async () => {
     const button = dialog.querySelector('[data-client-call-refresh]');
     button.disabled = true;

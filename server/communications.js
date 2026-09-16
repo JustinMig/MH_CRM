@@ -40,7 +40,7 @@ export async function adminRest(path, { method = 'GET', body, prefer = '' } = {}
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    cache: 'no-store'
+    cache: 'no-store', signal: AbortSignal.timeout(25000)
   });
   if (response.status === 204) return null;
   const text = await response.text();
@@ -56,31 +56,41 @@ export async function adminRest(path, { method = 'GET', body, prefer = '' } = {}
 export async function requireCrmUser(request) {
   const auth = request.headers.get('authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) throw Object.assign(new Error('Sign in to M&H CRM first.'), { status: 401 });
+  if (!token) throw Object.assign(new Error('Sign in to Mayer MIG CRM first.'), { status: 401 });
 
   const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${token}`
     },
-    cache: 'no-store'
+    cache: 'no-store', signal: AbortSignal.timeout(25000)
   });
   const user = await userResponse.json().catch(() => ({}));
-  if (!userResponse.ok || !user?.id) throw Object.assign(new Error('Your M&H CRM session has expired. Sign in again.'), { status: 401 });
+  if (!userResponse.ok || !user?.id) throw Object.assign(new Error('Your Mayer MIG CRM session has expired. Sign in again.'), { status: 401 });
 
   const profiles = await adminRest(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=id,full_name,role,active&limit=1`);
   const profile = Array.isArray(profiles) ? profiles[0] : null;
-  if (!profile?.active) throw Object.assign(new Error('This M&H CRM user is not active.'), { status: 403 });
+  if (!profile?.active) throw Object.assign(new Error('This Mayer MIG CRM user is not active.'), { status: 403 });
   return { id: user.id, email: user.email || '', profile };
 }
 
-export async function getClient(clientId) {
+export function canAccessClient(user, client) {
+  return Boolean(user?.id && user?.profile?.active && client &&
+    (['owner','admin'].includes(user.profile.role) || client.assigned_agent_id === user.id));
+}
+export function requireCrmAdmin(user) {
+  if (!user?.profile?.active || !['owner','admin'].includes(user.profile.role)) {
+    throw Object.assign(new Error('Owner or administrator access is required.'), { status:403 });
+  }
+}
+export async function getClient(clientId, user) {
   if (!UUID.test(String(clientId || ''))) return null;
   const rows = await adminRest(`/rest/v1/clients?id=eq.${encodeURIComponent(clientId)}&select=id,first_name,last_name,phone,assigned_agent_id,status&limit=1`);
-  return Array.isArray(rows) ? rows[0] || null : null;
+  const client = Array.isArray(rows) ? rows[0] || null : null;
+  return canAccessClient(user, client) ? client : null;
 }
 
-export async function getClients(clientIds) {
+export async function getClients(clientIds, user) {
   const ids = Array.from(new Set((clientIds || []).map(String).filter(id => UUID.test(id)))).slice(0, 250);
   if (!ids.length) return [];
   const rows = [];
@@ -89,7 +99,7 @@ export async function getClients(clientIds) {
     const data = await adminRest(`/rest/v1/clients?id=in.(${chunk.join(',')})&select=id,first_name,last_name,phone,assigned_agent_id,status`);
     if (Array.isArray(data)) rows.push(...data);
   }
-  return rows;
+  return rows.filter(client => canAccessClient(user, client));
 }
 
 async function getAllClientPhones() {
@@ -116,7 +126,7 @@ async function twilioRequest(pathOrUrl, { method = 'GET', form } = {}) {
       ...(form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {})
     },
     body: form ? form.toString() : undefined,
-    cache: 'no-store'
+    cache: 'no-store', signal: AbortSignal.timeout(25000)
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -213,7 +223,7 @@ export async function syncClientMessages(client, userId) {
   return { synced: await upsertTwilioMessages(records) };
 }
 
-export async function syncRecentMessages(userId) {
+export async function syncRecentMessages(userId, user) {
   const { officeNumber } = twilioConfig();
   const [messages, clients] = await Promise.all([
     listTwilioMessages({}, { daysBack: 45, maxPages: 4, pageSize: 200 }),
@@ -235,6 +245,7 @@ export async function syncRecentMessages(userId) {
     const counterpart = from === officeNumber ? to : from;
     const matches = phoneMap.get(phone10(counterpart)) || [];
     if (matches.length !== 1) { skipped += 1; continue; }
+    if (!canAccessClient(user, matches[0])) continue;
     records.push(storedMessage(message, matches[0], userId));
   }
   return { synced: await upsertTwilioMessages(records), skipped };

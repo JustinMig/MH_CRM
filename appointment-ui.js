@@ -17,7 +17,7 @@ export function installAppointmentSingleAgent(root, repository) {
     // M&H is currently a single-agent setup. Remove the visible selector;
     // saveEvent automatically assigns the signed-in user when this value is absent.
     const agent = form.elements.namedItem('assigned_agent_id');
-    if (agent) {
+    if (agent && repository.agents.length <= 1) {
       const field = agent.closest('.field');
       if (field) field.remove();
       else agent.remove();
