@@ -8,27 +8,19 @@ function groupBySummary(panel, title) {
     .find(group => group.querySelector(':scope > summary')?.textContent.trim() === title) || null;
 }
 
+// SSN placement is owned by client-intake-sections/client-ssn-field.
+// This secure-data module only configures the existing field and never moves it.
 function keepSocialVisible(form) {
-  const information = form.querySelector('[data-panel="information"]');
-  if (!information) return;
-  const personal = groupBySummary(information, 'Personal & Contact Information');
   const ssn = form.elements.namedItem('ssn');
   const ssnField = ssn?.closest?.('label.field');
-  const grid = personal?.querySelector(':scope > .form-grid');
-  if (!personal || !ssnField || !grid) return;
-
-  const oldVisible = information.querySelector('[data-client-social-visible]');
-  const phoneField = form.elements.namedItem('phone')?.closest?.('label.field');
-  if (ssnField.parentElement !== grid) {
-    if (phoneField?.parentElement === grid) phoneField.insertAdjacentElement('afterend', ssnField);
-    else grid.append(ssnField);
-  }
-  oldVisible?.remove();
-
+  if (!(ssn instanceof HTMLInputElement) || !ssnField) return;
   const labelText = ssnField.querySelector(':scope > span');
   if (labelText) labelText.textContent = 'Social Security Number';
   ssn.type = 'text';
+  ssn.inputMode = 'numeric';
   ssn.autocomplete = 'off';
+  ssn.placeholder = '###-##-####';
+  ssn.disabled = false;
 }
 
 function credentialMarkup() {
