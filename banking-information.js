@@ -8,6 +8,17 @@ function bySummary(panel, title) {
     .find(group => group.querySelector(':scope > summary')?.textContent.trim() === title) || null;
 }
 
+function accountMethodPanel(method, label) {
+  return `<section class="banking-method-panel span-all" data-banking-panel="${method}" hidden>
+    <div class="banking-panel-grid">
+      <label class="field span-all"><span>Account Name</span><input name="banking_${method}_account_name" autocomplete="off"></label>
+      <label class="field"><span>Routing Number</span><input name="banking_${method}_routing_number" inputmode="numeric" autocomplete="off" maxlength="12"></label>
+      <label class="field"><span>Account Number</span><input name="banking_${method}_account_number" autocomplete="off" maxlength="64"></label>
+      <label class="field span-all"><span>Notes</span><textarea name="banking_${method}_notes" rows="4" maxlength="4000" placeholder="Enter notes about this ${label} payment method..."></textarea></label>
+    </div>
+  </section>`;
+}
+
 function markup() {
   return `<details class="field-group client-banking-group" data-client-banking-group>
     <summary>Banking Information</summary>
@@ -18,6 +29,10 @@ function markup() {
           <option value="">Select…</option>
           <option value="bank">Bank</option>
           <option value="card">Credit/Debit</option>
+          <option value="cashapp">CashApp</option>
+          <option value="chime">Chime</option>
+          <option value="other">Other</option>
+          <option value="direct_express">Direct Express</option>
           <option value="mail_in">Direct Notice / Mail In</option>
         </select>
       </label>
@@ -38,6 +53,18 @@ function markup() {
           <label class="field span-all banking-card-notes-field"><span>Card Notes</span><textarea name="banking_card_notes" rows="4" maxlength="4000" placeholder="Enter notes about this card or payment method..."></textarea></label>
         </div>
         <p class="banking-cvv-note">For card security, CVV stays visible while you are entering it but is never stored in the CRM.</p>
+      </section>
+
+      ${accountMethodPanel('cashapp', 'CashApp')}
+      ${accountMethodPanel('chime', 'Chime')}
+      ${accountMethodPanel('other', 'Other')}
+
+      <section class="banking-method-panel span-all" data-banking-panel="direct_express" hidden>
+        <div class="banking-panel-grid">
+          <label class="field span-all"><span>Card Number</span><input name="banking_direct_express_card_number" inputmode="numeric" autocomplete="off" maxlength="23"></label>
+          <label class="field"><span>Expiration Date</span><input name="banking_direct_express_expiration" inputmode="numeric" autocomplete="off" placeholder="MM/YY" maxlength="7"></label>
+          <label class="field span-all"><span>Notes</span><textarea name="banking_direct_express_notes" rows="4" maxlength="4000" placeholder="Enter notes about this Direct Express card..."></textarea></label>
+        </div>
       </section>
 
       <section class="banking-method-panel banking-mail-panel span-all" data-banking-panel="mail_in" hidden>
@@ -67,6 +94,27 @@ function formatExpiration(value) {
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
+function digitsOnly(input, max = 12) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    input.value = String(input.value || '').replace(/\D/g, '').slice(0, max);
+  });
+}
+
+function wireCard(input) {
+  input?.addEventListener('input', () => {
+    const next = formatCard(input.value);
+    if (input.value !== next) input.value = next;
+  });
+}
+
+function wireExpiration(input) {
+  input?.addEventListener('input', () => {
+    const next = formatExpiration(input.value);
+    if (input.value !== next) input.value = next;
+  });
+}
+
 function enhance(form) {
   if (!(form instanceof HTMLFormElement)) return;
   const panel = form.querySelector('[data-panel="information"]');
@@ -84,27 +132,20 @@ function enhance(form) {
   const method = form.elements.namedItem('banking_payment_method');
   method?.addEventListener('change', () => showMethod(form));
 
-  const card = form.elements.namedItem('banking_card_number');
-  card?.addEventListener('input', () => {
-    const next = formatCard(card.value);
-    if (card.value !== next) card.value = next;
-  });
-
-  const exp = form.elements.namedItem('banking_card_expiration');
-  exp?.addEventListener('input', () => {
-    const next = formatExpiration(exp.value);
-    if (exp.value !== next) exp.value = next;
-  });
+  wireCard(form.elements.namedItem('banking_card_number'));
+  wireExpiration(form.elements.namedItem('banking_card_expiration'));
+  wireCard(form.elements.namedItem('banking_direct_express_card_number'));
+  wireExpiration(form.elements.namedItem('banking_direct_express_expiration'));
 
   const cvv = form.elements.namedItem('banking_cvv');
   cvv?.addEventListener('input', () => {
     cvv.value = String(cvv.value || '').replace(/\D/g, '').slice(0, 4);
   });
 
-  const routing = form.elements.namedItem('banking_routing_number');
-  routing?.addEventListener('input', () => {
-    routing.value = String(routing.value || '').replace(/\D/g, '').slice(0, 12);
-  });
+  digitsOnly(form.elements.namedItem('banking_routing_number'));
+  digitsOnly(form.elements.namedItem('banking_cashapp_routing_number'));
+  digitsOnly(form.elements.namedItem('banking_chime_routing_number'));
+  digitsOnly(form.elements.namedItem('banking_other_routing_number'));
 
   showMethod(form);
 }
@@ -133,14 +174,27 @@ function apply(form, banking) {
     status(form, 'No banking information is saved for this client.');
     return;
   }
-  set(form, 'banking_payment_method', banking.payment_method);
+  const method = String(banking.payment_method || '');
+  set(form, 'banking_payment_method', method);
   set(form, 'banking_bank_name', banking.bank_name);
   set(form, 'banking_routing_number', banking.routing_number);
   set(form, 'banking_account_number', banking.account_number);
-  set(form, 'banking_card_number', formatCard(banking.card_number));
-  set(form, 'banking_card_expiration', banking.card_expiration);
-  set(form, 'banking_card_notes', banking.card_notes);
+  set(form, 'banking_card_number', method === 'card' ? formatCard(banking.card_number) : '');
+  set(form, 'banking_card_expiration', method === 'card' ? banking.card_expiration : '');
+  set(form, 'banking_card_notes', method === 'card' ? banking.card_notes : '');
   set(form, 'banking_cvv', '');
+
+  for (const accountMethod of ['cashapp','chime','other']) {
+    set(form, `banking_${accountMethod}_account_name`, method === accountMethod ? banking.account_name : '');
+    set(form, `banking_${accountMethod}_routing_number`, method === accountMethod ? banking.routing_number : '');
+    set(form, `banking_${accountMethod}_account_number`, method === accountMethod ? banking.account_number : '');
+    set(form, `banking_${accountMethod}_notes`, method === accountMethod ? banking.payment_notes : '');
+  }
+
+  set(form, 'banking_direct_express_card_number', method === 'direct_express' ? formatCard(banking.card_number) : '');
+  set(form, 'banking_direct_express_expiration', method === 'direct_express' ? banking.card_expiration : '');
+  set(form, 'banking_direct_express_notes', method === 'direct_express' ? banking.card_notes : '');
+
   showMethod(form);
   status(form, 'Encrypted banking information loaded securely. CVV is never stored.');
 }
@@ -153,19 +207,22 @@ async function load(form, clientId) {
 
 function fromRecord(record = {}) {
   const method = String(record.banking_payment_method || '').toLowerCase();
+  const accountPrefix = ['cashapp','chime','other'].includes(method) ? `banking_${method}_` : '';
   return {
     payment_method: method,
     bank_name: String(record.banking_bank_name || '').trim(),
-    routing_number: String(record.banking_routing_number || '').replace(/\D/g, ''),
-    account_number: String(record.banking_account_number || '').replace(/[^0-9A-Za-z]/g, ''),
-    card_number: String(record.banking_card_number || '').replace(/\D/g, ''),
-    card_expiration: String(record.banking_card_expiration || '').trim(),
-    card_notes: String(record.banking_card_notes || '').slice(0, 4000),
+    account_name: accountPrefix ? String(record[`${accountPrefix}account_name`] || '').trim() : '',
+    routing_number: String(accountPrefix ? record[`${accountPrefix}routing_number`] : record.banking_routing_number || '').replace(/\D/g, ''),
+    account_number: String(accountPrefix ? record[`${accountPrefix}account_number`] : record.banking_account_number || '').replace(/[^0-9A-Za-z]/g, ''),
+    payment_notes: accountPrefix ? String(record[`${accountPrefix}notes`] || '').slice(0, 4000) : '',
+    card_number: String(method === 'direct_express' ? record.banking_direct_express_card_number : record.banking_card_number || '').replace(/\D/g, ''),
+    card_expiration: String(method === 'direct_express' ? record.banking_direct_express_expiration : record.banking_card_expiration || '').trim(),
+    card_notes: String(method === 'direct_express' ? record.banking_direct_express_notes : record.banking_card_notes || '').slice(0, 4000),
   };
 }
 
 function hasData(data) {
-  return !!(data.payment_method || data.bank_name || data.routing_number || data.account_number || data.card_number || data.card_expiration || data.card_notes);
+  return !!(data.payment_method || data.bank_name || data.account_name || data.routing_number || data.account_number || data.payment_notes || data.card_number || data.card_expiration || data.card_notes);
 }
 
 document.addEventListener('click', event => {
