@@ -75,7 +75,7 @@ test('communication actions use rendered immutable IDs and never query their own
 test('public startup does not import workspace and feature modules until after authentication',async()=>{
  const [html,app,workspace]=await Promise.all(['index.html','app.js','workspace-start.js'].map(read));
  assert.equal((html.match(/<script/g)||[]).length,1);assert.equal((html.match(/rel="stylesheet"/g)||[]).length,1);
- assert.doesNotMatch(app,/^import .*workspace/m);assert.match(app,/import\('\.\/workspace-start\.js'\)/);
+ assert.doesNotMatch(app,/^import .*workspace/m);assert.match(app,/import\('\.\/workspace-start\.js(?:\?[^']*)?'\)/);
  assert.match(workspace,/import \{ mhRepository, supabase \}/);
  assert.match(app,/if \(!candidate\) return invalidReset/);assert.match(app,/passwordSaved/);
 });
