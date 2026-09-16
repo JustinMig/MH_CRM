@@ -74,11 +74,65 @@ async function lookupZip(zip) {
   }
 }
 
+function replaceCountyControl(form, counties, preferredCounty = '', primaryCounty = '') {
+  const current = form.elements.namedItem('county');
+  if (!(current instanceof HTMLInputElement || current instanceof HTMLSelectElement)) return null;
+  const field = current.closest('label.field');
+  if (!field) return current;
+
+  const unique = [...new Set((counties || []).map(value => String(value || '').trim()).filter(Boolean))];
+  const preferred = String(preferredCounty || '').trim();
+  const primary = String(primaryCounty || '').trim();
+
+  if (unique.length <= 1) {
+    const value = unique[0] || primary || preferred;
+    if (current instanceof HTMLInputElement) {
+      current.value = value;
+      current.removeAttribute('aria-describedby');
+      return current;
+    }
+    const input = document.createElement('input');
+    input.name = 'county';
+    input.type = 'text';
+    input.autocomplete = 'address-level2';
+    input.value = value;
+    current.replaceWith(input);
+    return input;
+  }
+
+  const selected = unique.includes(preferred) ? preferred : (unique.includes(primary) ? primary : unique[0]);
+  if (current instanceof HTMLSelectElement) {
+    current.replaceChildren(...unique.map(county => {
+      const option = document.createElement('option');
+      option.value = county;
+      option.textContent = county;
+      option.selected = county === selected;
+      return option;
+    }));
+    current.value = selected;
+    current.setAttribute('aria-label', 'County — select the correct county for this ZIP code');
+    return current;
+  }
+
+  const select = document.createElement('select');
+  select.name = 'county';
+  select.setAttribute('aria-label', 'County — select the correct county for this ZIP code');
+  for (const county of unique) {
+    const option = document.createElement('option');
+    option.value = county;
+    option.textContent = county;
+    option.selected = county === selected;
+    select.append(option);
+  }
+  current.replaceWith(select);
+  return select;
+}
+
 function wireZipCounty(form) {
   if (!(form instanceof HTMLFormElement) || form.dataset.zipCountyReady === 'true') return;
   const zipInput = form.elements.namedItem('zip');
-  const countyInput = form.elements.namedItem('county');
-  if (!(zipInput instanceof HTMLInputElement) || !(countyInput instanceof HTMLInputElement)) return;
+  if (!(zipInput instanceof HTMLInputElement)) return;
+  if (!(form.elements.namedItem('county') instanceof HTMLElement)) return;
 
   form.dataset.zipCountyReady = 'true';
   zipInput.inputMode = 'numeric';
@@ -86,20 +140,30 @@ function wireZipCounty(form) {
   let timer = 0;
   let requestToken = 0;
 
-  const run = async ({ onlyIfCountyBlank = false } = {}) => {
+  const run = async ({ initial = false } = {}) => {
     const zip = String(zipInput.value || '').replace(/\D/g, '').slice(0, 5);
     if (zip.length !== 5) return;
-    if (onlyIfCountyBlank && String(countyInput.value || '').trim()) return;
+    const countyBefore = form.elements.namedItem('county');
+    const existingCounty = countyBefore instanceof HTMLInputElement || countyBefore instanceof HTMLSelectElement
+      ? String(countyBefore.value || '').trim()
+      : '';
     const token = ++requestToken;
     try {
       const result = await lookupZip(zip);
       const currentZip = String(zipInput.value || '').replace(/\D/g, '').slice(0, 5);
       if (token !== requestToken || currentZip !== zip || !form.isConnected) return;
-      countyInput.value = String(result.county || '');
-      countyInput.dispatchEvent(new Event('input', { bubbles: true }));
-      countyInput.dispatchEvent(new Event('change', { bubbles: true }));
+      const counties = Array.isArray(result.counties) && result.counties.length ? result.counties : [result.county].filter(Boolean);
+      const control = replaceCountyControl(form, counties, existingCounty, result.county);
+      if (!control) return;
+
+      // User-entered ZIP changes should register as a form change. Initial hydration should not
+      // mark an unchanged saved county dirty merely because an input became a select.
+      if (!initial || !existingCounty) {
+        control.dispatchEvent(new Event('input', { bubbles: true }));
+        control.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     } catch {
-      // Leave manually entered county untouched if lookup is unavailable.
+      // Leave manually entered/saved county untouched if lookup is unavailable.
     }
   };
 
@@ -110,8 +174,8 @@ function wireZipCounty(form) {
   zipInput.addEventListener('input', schedule);
   zipInput.addEventListener('change', () => void run());
 
-  // Existing records with a ZIP but no county can repair themselves when opened.
-  void run({ onlyIfCountyBlank: true });
+  // Existing records are checked too, so a saved county becomes a dropdown when its ZIP spans counties.
+  void run({ initial: true });
 }
 
 function organizePersonalContact(form) {
