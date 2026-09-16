@@ -1,0 +1,27 @@
+name: MIG Fix Source Snapshot
+on:
+  push:
+    branches: [fix/mig-audit-20260915]
+    paths: [.github/workflows/mig-fix-source.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          mkdir -p /tmp/mig-source
+          git archive HEAD > /tmp/mig-source/source.tar
+          git rev-parse HEAD > /tmp/mig-source/commit.txt
+          curl -fsSL 'https://raw.githubusercontent.com/JustinMig/MH_CRM/audit/mayer-mig-20260915/.github/workflows/mig-communications-audit.yml' > /tmp/mig-source/communications-audit.yml
+          curl -fsSL 'https://raw.githubusercontent.com/JustinMig/MH_CRM/audit/mayer-mig-20260915/.github/workflows/mig-speed-audit.yml' > /tmp/mig-source/speed-audit.yml
+          curl -fsSL 'https://crm.mayerig.com/mayer-bear.png' > /tmp/mig-source/mayer-bear.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mig-fix-source
+          path: /tmp/mig-source
+          retention-days: 3
