@@ -1,7 +1,7 @@
 // Loaded only after authentication. Bundled into a single deferred feature chunk.
 import './input-formatting.js';
 import './client-product-status.js';
-import './client-search-all.js';
+import './client-search-all.js?v=3';
 import './medicare-gov-credentials.js';
 import './banking-information.js';
 import './life-multiple-policies.js';
