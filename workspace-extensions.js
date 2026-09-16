@@ -9,7 +9,7 @@ import './client-pharmacy.js';
 import './client-health-tabs.js';
 import './hospital-indemnity-documents.js';
 import './client-personal-underwriting.js';
-import './client-intake-sections.js?v=5';
+import './client-intake-sections.js?v=multi-county-1';
 import './campaign-stage-layout.js';
 import './campaign-call-placeholder.js';
 import './campaign-list-compact.js';
