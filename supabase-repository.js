@@ -196,6 +196,13 @@ export const mhRepository = {
   async listNotes() { const { data, error } = await supabase.from('client_notes').select('*').order('created_at', { ascending: false }).limit(100); if (error) throw error; return data || []; },
   async saveNote(value) { const body = { client_id: clean(value.client_id), author_id: this.user?.id, title: value.title || 'Note', body: value.body || value.notes || '', pinned: !!value.pinned }; const { data, error } = value.id ? await supabase.from('client_notes').update(body).eq('id', value.id).select().single() : await supabase.from('client_notes').insert(body).select().single(); if (error) throw error; return data; },
   async searchContacts(query = '') { let q = supabase.from('company_contacts').select('*').order('company').limit(50); if (query) q = q.ilike('company', `%${query.replace(/[%]/g,' ')}%`); const { data, error } = await q; if (error) throw error; return data || []; },
-  async commissions({ agent } = {}) { let q = supabase.from('commissions').select('*').order('earned_date', { ascending: false }).limit(500); if (agent) q = q.eq('agent_id', agent); if (error) throw error; const rows = data || []; return { rows, total: rows.reduce((s,r)=>s+Number(r.amount||0),0) }; },
+  async commissions({ agent } = {}) {
+    let q = supabase.from('commissions').select('*').order('earned_date', { ascending: false }).limit(500);
+    if (agent) q = q.eq('agent_id', agent);
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = data || [];
+    return { rows, total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) };
+  },
   async getBuildChart() { return []; }
 };
