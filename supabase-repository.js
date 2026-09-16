@@ -35,8 +35,16 @@ export const mhRepository = {
     if (error) throw error;
     return data || [];
   },
-  async inviteUser({ full_name, email, role }) {
-    const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: { full_name, email, role } });
+  async inviteUser({ full_name, email }) {
+    const { data, error } = await supabase.functions.invoke('admin-invite-user', { body: { full_name, email, role: 'admin' } });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    const users = await this.listUsers();
+    this.agents.splice(0, this.agents.length, ...users.filter(user => user.active));
+    return data;
+  },
+  async setUserActive(userId, active) {
+    const { data, error } = await supabase.functions.invoke('admin-user-access', { body: { user_id: userId, active: !!active } });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
     const users = await this.listUsers();
