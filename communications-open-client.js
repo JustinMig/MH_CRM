@@ -1,4 +1,4 @@
-import { mhRepository, supabase } from './supabase-repository.js';
+import { mhRepository } from './supabase-repository.js';
 import { Dialogs } from './dialogs.js';
 import { hydrate, serializable } from './core.js';
 import { clientForm, saveFooter, icon, empty } from './views.js';
@@ -149,17 +149,6 @@ function decorateTextDialogs() {
   });
 }
 
-async function visibleCalls(clientId = '', limit = 500) {
-  let query = supabase.from('ringcentral_calls')
-    .select('id,client_id,started_at')
-    .order('started_at', { ascending:false })
-    .limit(limit);
-  if (clientId) query = query.eq('client_id', clientId);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
-}
-
 function putOpenOnCallRow(rowNode, clientId) {
   if (!rowNode || !clientId) return;
   let actions = rowNode.querySelector('.mh-call-delete-row');
@@ -171,16 +160,9 @@ function putOpenOnCallRow(rowNode, clientId) {
   if (!actions.querySelector('[data-open-client]')) actions.prepend(makeOpenButton(clientId));
 }
 
-async function decorateGlobalCalls() {
-  const panel = document.querySelector('.mh-call-panel');
-  const list = panel?.querySelector('[data-call-list]');
-  if (!panel || !list || panel.hidden) return;
-  let rows;
-  try { rows = await visibleCalls('', 500); } catch { return; }
-  if (!list.isConnected) return;
-  const nodes = Array.from(list.querySelectorAll(':scope > .mh-call-row'));
-  const count = Math.min(nodes.length, rows.length);
-  for (let i = 0; i < count; i += 1) putOpenOnCallRow(nodes[i], rows[i].client_id);
+function decorateGlobalCalls() {
+  document.querySelectorAll('[data-call-list] > .mh-call-row[data-call-id][data-client-id]')
+    .forEach(row => putOpenOnCallRow(row, row.dataset.clientId));
 }
 
 async function decorateClientCallDialogs() {
@@ -189,7 +171,7 @@ async function decorateClientCallDialogs() {
     if (!clientId) continue;
     const head = dialog.querySelector('.mh-call-data-actions');
     if (head && !head.querySelector('[data-open-client]')) head.prepend(makeOpenButton(clientId));
-    dialog.querySelectorAll('[data-client-call-dialog-list] > .mh-call-row').forEach(row => putOpenOnCallRow(row, clientId));
+    dialog.querySelectorAll('[data-client-call-dialog-list] > .mh-call-row').forEach(row => putOpenOnCallRow(row, row.dataset.clientId));
   }
 }
 
@@ -212,7 +194,7 @@ function scheduleScan() {
 }
 
 installStyles();
-new MutationObserver(scheduleScan).observe(document.body, { childList:true, subtree:true });
+window.addEventListener('mig:communications-rendered', scheduleScan);
 window.addEventListener('hashchange', scheduleScan);
 window.addEventListener('focus', scheduleScan);
 window.setTimeout(() => void scan(), 0);

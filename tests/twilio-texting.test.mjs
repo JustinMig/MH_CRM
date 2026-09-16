@@ -38,19 +38,22 @@ test('Communications only shows saved M&H clients and M&H-era texts', async () =
   assert.match(center, /const client = byId\.get\(message\.client_id\)/);
   assert.match(center, /if \(!client\) continue/);
   assert.doesNotMatch(center, /byId\.get\(message\.client_id\) \|\|/);
-  assert.match(center, /Saved M&H clients · M&H texting activity only/);
+  assert.match(center, /Saved Mayer MIG clients · Mayer MIG texting activity only/);
 });
 
 test('Texting UI is loaded without broad mutation observers', async () => {
-  const [index, client, center] = await Promise.all([
+  const [index, client, center, startup, styles] = await Promise.all([
     text('index.html'),
     text('client-texting.js'),
-    text('communications-ui.js')
+    text('communications-ui.js'),
+    text('workspace-start.js'),
+    text('workspace-styles.css')
   ]);
-  assert.match(index, /client-texting\.js\?v=1/);
-  assert.match(index, /communications-ui\.js\?v=3/);
-  assert.match(index, /client-texting\.css\?v=1/);
-  assert.match(index, /communications-ui\.css\?v=1/);
+  assert.doesNotMatch(index, /client-texting\.js|communications-ui\.js/);
+  assert.match(startup, /createWorkspace[\s\S]*import\('\.\/communications-ui\.js/);
+  assert.match(center, /from '\.\/client-texting\.js'/);
+  assert.match(styles, /client-texting\.css/);
+  assert.match(styles, /communications-ui\.css/);
   assert.doesNotMatch(client, /MutationObserver/);
   assert.doesNotMatch(center, /MutationObserver/);
   assert.match(client, /options\.kind !== 'client-dialog'/);

@@ -1,3 +1,4 @@
+import { communicationsRendered, releaseRecordings } from './communications-events.js';
 import { supabase } from './supabase-repository.js';
 import { smsAuthHeaders } from './client-texting.js';
 
@@ -71,7 +72,7 @@ async function loadCalls({ clientId = '', limit = 500 } = {}) {
   let query = supabase
     .from('ringcentral_calls')
     .select('id,client_id,source_call_id,direction,result,started_at,duration_seconds,contact_phone,from_phone,to_phone,recording_id')
-    .order('started_at', { ascending:false })
+    .order('started_at', { ascending:false }).order('id', { ascending:false })
     .limit(limit);
   if (clientId) query = query.eq('client_id', clientId);
   const { data: calls, error } = await query;
@@ -85,7 +86,7 @@ async function loadCalls({ clientId = '', limit = 500 } = {}) {
     clients = data || [];
   }
   const byId = new Map(clients.map(client => [client.id, client]));
-  return rows.map(row => ({ ...row, client: byId.get(row.client_id) || null }));
+  return rows.filter(row => byId.has(row.client_id)).map(row => ({ ...row, client: byId.get(row.client_id) }));
 }
 
 function callRowMarkup(call, { showClient = true } = {}) {
@@ -94,7 +95,7 @@ function callRowMarkup(call, { showClient = true } = {}) {
   const number = call.contact_phone || (call.direction === 'Inbound' ? call.from_phone : call.to_phone) || client?.phone || '';
   const result = call.result || (call.direction === 'Inbound' ? 'Inbound call' : 'Outbound call');
   const recording = call.recording_id ? `<div class="mh-recording-wrap" data-recording-wrap="${esc(call.recording_id)}"><button type="button" class="btn secondary" data-load-recording="${esc(call.recording_id)}">▶ Play Recording</button></div>` : '';
-  return `<article class="mh-call-row ${String(call.direction || '').toLowerCase()}">
+  return `<article class="mh-call-row ${String(call.direction || '').toLowerCase()}" data-call-id="${esc(call.id)}" data-client-id="${esc(call.client_id)}" data-call-direction="${esc(call.direction)}" data-recording-id="${esc(call.recording_id || '')}">
     <div class="mh-call-row-head"><div><span class="mh-call-direction">${esc(call.direction || 'Call')}</span>${showClient ? `<span class="mh-call-client">${esc(name)}</span>` : ''}</div><span class="mh-call-time">${esc(dateTime(call.started_at))}</span></div>
     <div class="mh-call-meta"><span>${esc(result)}</span><span>${esc(durationText(call.duration_seconds))}</span>${number ? `<span>${esc(phoneText(number))}</span>` : ''}</div>
     ${recording}
@@ -119,6 +120,7 @@ async function bindRecordings(host) {
           throw new Error(payload.error || 'Unable to load recording.');
         }
         const blob = await response.blob();
+        if (!wrap.isConnected) return;
         const audio = document.createElement('audio');
         audio.controls = true;
         audio.preload = 'metadata';
@@ -142,16 +144,21 @@ async function drawGlobalCalls(panel, { message = '' } = {}) {
   const list = panel.querySelector('[data-call-list]');
   const status = panel.querySelector('[data-call-status]');
   try {
+    const loadVersion = (panel.__callLoadVersion || 0) + 1;
+    panel.__callLoadVersion = loadVersion;
     const calls = await loadCalls({ limit:500 });
+    if (panel.__callLoadVersion !== loadVersion) return;
     if (!panel.isConnected) return;
     const inbound = calls.filter(call => call.direction === 'Inbound').length;
     const recordings = calls.filter(call => call.recording_id).length;
     panel.querySelector('[data-call-total]').textContent = String(calls.length);
     panel.querySelector('[data-call-inbound]').textContent = String(inbound);
     panel.querySelector('[data-call-recordings]').textContent = String(recordings);
-    list.innerHTML = calls.length ? calls.map(call => callRowMarkup(call)).join('') : '<div class="mh-client-call-empty">No RingCentral call data is stored for M&H clients yet.</div>';
-    status.textContent = message || `M&H client calls only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
+    releaseRecordings(list);
+    list.innerHTML = calls.length ? calls.map(call => callRowMarkup(call)).join('') : '<div class="mh-client-call-empty">No RingCentral call data is stored for Mayer MIG clients yet.</div>';
+    status.textContent = message || `Mayer MIG client calls only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
     await bindRecordings(list);
+    communicationsRendered(list);
   } catch (error) {
     if (panel.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load call data.';
   }
@@ -176,7 +183,7 @@ function decorateCommunications(host) {
   callPanel.className = 'mh-call-panel';
   callPanel.dataset.channelPanel = 'calls';
   callPanel.hidden = true;
-  callPanel.innerHTML = `<div class="mh-call-head"><div><span class="eyebrow">RingCentral</span><h2>Client Call Data</h2><p>Read-only call history and recordings for saved M&H clients. Calling is not enabled in this CRM.</p></div><div class="mh-call-actions"><button type="button" class="btn secondary" data-refresh-calls>Refresh Call Data</button></div></div>
+  callPanel.innerHTML = `<div class="mh-call-head"><div><span class="eyebrow">RingCentral</span><h2>Client Call Data</h2><p>Read-only call history and recordings for saved Mayer MIG clients. Calling is not enabled in this CRM.</p></div><div class="mh-call-actions"><button type="button" class="btn secondary" data-refresh-calls>Refresh Call Data</button></div></div>
     <div class="mh-call-summary"><div><span>Stored Calls</span><strong data-call-total>—</strong></div><div><span>Inbound</span><strong data-call-inbound>—</strong></div><div><span>Recordings</span><strong data-call-recordings>—</strong></div></div>
     <div class="mh-call-status" data-call-status>Open Call Data to load saved calls.</div><div class="mh-call-list" data-call-list></div>`;
 
@@ -202,7 +209,7 @@ function decorateCommunications(host) {
   callPanel.querySelector('[data-refresh-calls]').onclick = async () => {
     const button = callPanel.querySelector('[data-refresh-calls]');
     button.disabled = true;
-    callPanel.querySelector('[data-call-status]').textContent = 'Refreshing matched M&H client calls…';
+    callPanel.querySelector('[data-call-status]').textContent = 'Refreshing matched Mayer MIG client calls…';
     try {
       const result = await syncCalls({ force:true });
       await drawGlobalCalls(callPanel, { message:`Call data refreshed · ${result.matched || 0} matched calls · ${result.recordings || 0} recordings` });
@@ -212,11 +219,11 @@ function decorateCommunications(host) {
   };
 
   // Keep call data current without delaying the Text Messages screen.
-  window.setTimeout(() => syncCalls().catch(() => {}), 1200);
+  // Loading Text Messages does not start a separate RingCentral history scan.
 }
 
 function mountCommunicationsTabs() {
-  if (!location.hash.startsWith('#/communications')) return;
+  if (!location.hash.startsWith('#/communications')) { routeObserver?.disconnect(); routeObserver = null; return; }
   const host = document.querySelector('#sms-communications-center');
   if (host) { decorateCommunications(host); return; }
   const content = document.querySelector('.content');
@@ -228,49 +235,14 @@ function mountCommunicationsTabs() {
   routeObserver.observe(content, { childList:true, subtree:true });
 }
 
-async function drawClientCalls(container, clientId) {
-  if (!container?.isConnected || !clientId) return;
-  const status = container.querySelector('[data-client-call-status]');
-  const list = container.querySelector('[data-client-call-list]');
-  status.textContent = 'Loading saved call data…';
-  try {
-    const calls = await loadCalls({ clientId, limit:125 });
-    if (!container.isConnected) return;
-    list.innerHTML = calls.length ? calls.map(call => callRowMarkup(call, { showClient:false })).join('') : '<div class="mh-client-call-empty">No RingCentral calls are stored for this client yet.</div>';
-    status.textContent = `${calls.length} stored call${calls.length === 1 ? '' : 's'}${calls.some(call => call.recording_id) ? ' · recordings available' : ''}`;
-    await bindRecordings(list);
-  } catch (error) {
-    if (container.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load client call history.';
-  }
-}
-
-function attachClientHistory(dialog) {
-  if (!dialog?.isConnected || dialog.dataset.callHistoryMounted) return;
-  const clientId = dialog.dataset.smsClientId || '';
-  const panel = dialog.querySelector('#client-panel-information');
-  if (!clientId || !panel) return;
-  dialog.dataset.callHistoryMounted = 'true';
-  const details = document.createElement('details');
-  details.className = 'mh-client-call-history';
-  details.innerHTML = `<summary><span>Call Data &amp; Recordings</span><small>Read-only RingCentral history</small></summary><div class="mh-client-call-body"><div class="mh-call-status" data-client-call-status>Open to load call history.</div><div class="mh-call-list" data-client-call-list></div></div>`;
-  panel.append(details);
-  let loaded = false;
-  details.addEventListener('toggle', () => {
-    if (!details.open || loaded) return;
-    loaded = true;
-    void drawClientCalls(details, clientId);
-    syncCalls().then(result => { if (!result?.skipped && details.isConnected) void drawClientCalls(details, clientId); }).catch(() => {});
-  });
-}
-
-function scanClientDialogs() {
-  document.querySelectorAll('dialog.client-dialog').forEach(dialog => attachClientHistory(dialog));
-}
-
 installStyles();
 window.addEventListener('hashchange', () => window.setTimeout(mountCommunicationsTabs, 0));
 window.addEventListener('focus', () => { if (location.hash.startsWith('#/communications')) window.setTimeout(mountCommunicationsTabs, 0); });
-new MutationObserver(scanClientDialogs).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['data-sms-client-id'] });
-window.setTimeout(() => { mountCommunicationsTabs(); scanClientDialogs(); }, 0);
+window.setTimeout(mountCommunicationsTabs, 0);
 
 window.MHRingCentralReadOnly = { syncCalls, loadCalls };
+window.addEventListener('mig:communications-changed', event => {
+  if (event.detail?.kind !== 'calls') return;
+  const panel = document.querySelector('.mh-call-panel');
+  if (panel && !panel.hidden) void drawGlobalCalls(panel);
+});

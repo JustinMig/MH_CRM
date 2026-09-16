@@ -1,10 +1,11 @@
-import { requireCrmUser } from '../server/communications.js';
+import { requireCrmUser, requireCrmAdmin } from '../server/communications.js';
 
 const MAYER_CALENDAR_BRIDGE = 'https://crm.mayerig.com/api/mh-calendar/events';
 
 async function proxyCalendar(request) {
   try {
-    await requireCrmUser(request);
+    const user = await requireCrmUser(request);
+    requireCrmAdmin(user);
     const sourceUrl = new URL(request.url);
     const target = new URL(MAYER_CALENDAR_BRIDGE);
     for (const [key, value] of sourceUrl.searchParams) target.searchParams.set(key, value);
@@ -20,7 +21,7 @@ async function proxyCalendar(request) {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {})
       },
       body,
-      cache: 'no-store'
+      cache: 'no-store', signal: AbortSignal.timeout(25000)
     });
     const text = await response.text();
     return new Response(text, {

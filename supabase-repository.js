@@ -1,8 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-const SUPABASE_URL = 'https://bogusfmvdrlvxscopgaw.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_0g4-uBS_I8wJnBdLbtbriA_vFngXi46';
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+import { supabase } from './supabase-client.js';
+export { supabase } from './supabase-client.js';
 
 const clean = v => v === '' || v === undefined ? null : v;
 const money = v => v === '' || v === undefined || v === null ? null : Number(v);
@@ -25,6 +22,7 @@ export const mhRepository = {
     this.user = session?.user || null;
     if (!this.user) return false;
     this.profile = await one(supabase.from('profiles').select('id,full_name,role,active').eq('id', this.user.id));
+    if (!this.profile?.active) throw new Error('This CRM account is inactive. Contact your administrator.');
     const { data, error } = await supabase.from('profiles').select('id,full_name,role,active').eq('active', true).order('full_name');
     if (error) throw error;
     this.agents.splice(0, this.agents.length, ...(data || []));

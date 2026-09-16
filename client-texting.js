@@ -1,3 +1,6 @@
+import { smsAuthHeaders, syncSms } from './sms-sync.js';
+export { smsAuthHeaders } from './sms-sync.js';
+import { communicationsRendered, communicationsChanged } from './communications-events.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 import { Dialogs } from './dialogs.js';
 
@@ -6,20 +9,6 @@ const timeText = value => {
   const d = new Date(value || '');
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { timeZone: 'America/Chicago', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
 };
-
-export async function smsAuthHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Your M&H CRM session expired. Sign in again.');
-  return { Authorization: `Bearer ${session.access_token}` };
-}
-
-async function syncClient(clientId) {
-  const headers = await smsAuthHeaders();
-  const response = await fetch(`/api/twilio-sync?clientId=${encodeURIComponent(clientId)}`, { headers, cache: 'no-store' });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || 'Text message sync failed.');
-  return payload;
-}
 
 async function clientSummary(clientId) {
   const { data, error } = await supabase.from('clients').select('id,first_name,last_name,phone').eq('id', clientId).maybeSingle();
@@ -31,12 +20,12 @@ async function clientSummary(clientId) {
 async function clientMessages(clientId) {
   const { data, error } = await supabase
     .from('client_sms_messages')
-    .select('id,direction,body,status,error_code,error_message,read_at,occurred_at,created_at')
+    .select('id,client_id,direction,body,status,error_code,error_message,read_at,occurred_at,created_at')
     .eq('client_id', clientId)
-    .order('occurred_at', { ascending: true })
+    .order('occurred_at', { ascending: false }).order('id', { ascending: false })
     .limit(500);
   if (error) throw error;
-  return data || [];
+  return (data || []).reverse();
 }
 
 async function markClientRead(clientId) {
@@ -50,16 +39,19 @@ async function markClientRead(clientId) {
 }
 
 function renderMessages(host, messages) {
+  const atBottom = !host.querySelector('.sms-bubble') || host.scrollHeight - host.clientHeight - host.scrollTop < 80;
+  const oldTop = host.scrollTop;
   host.innerHTML = messages.length ? messages.map(message => {
     const incoming = message.direction === 'inbound';
     const status = incoming ? 'Received' : (message.status || 'Sent');
     const error = message.error_code ? ` · Error ${esc(message.error_code)}` : '';
-    return `<article class="sms-bubble ${incoming ? 'inbound' : 'outbound'}">
+    return `<article class="sms-bubble ${incoming ? 'inbound' : 'outbound'}" data-message-id="${esc(message.id)}" data-client-id="${esc(message.client_id)}">
       <div>${esc(message.body).replace(/\n/g, '<br>')}</div>
       <small>${esc(timeText(message.occurred_at || message.created_at))} · ${esc(status)}${error}</small>
     </article>`;
   }).join('') : '<div class="sms-empty">No messages yet. Send the first text below.</div>';
-  host.scrollTop = host.scrollHeight;
+  host.scrollTop = atBottom ? host.scrollHeight : oldTop;
+  communicationsRendered(host);
 }
 
 export async function openClientThread(clientId) {
@@ -78,6 +70,7 @@ export async function openClientThread(clientId) {
   </div>`;
   document.body.append(dialog);
   dialog.showModal();
+  communicationsRendered(dialog);
 
   const thread = dialog.querySelector('[data-sms-thread]');
   const phoneLine = dialog.querySelector('[data-sms-client-phone]');
@@ -89,13 +82,15 @@ export async function openClientThread(clientId) {
   let busy = false;
   let closed = false;
   let timer = null;
+  let syncing = false;
+  let lastMessageSnapshot = null;
 
   const showError = message => {
     errorBox.textContent = message || '';
     errorBox.hidden = !message;
   };
 
-  async function load({ sync = true } = {}) {
+  async function load() {
     if (busy || closed) return;
     busy = true;
     try {
@@ -103,16 +98,27 @@ export async function openClientThread(clientId) {
       const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client';
       dialog.querySelector('h2').textContent = `Text ${name}`;
       phoneLine.textContent = client.phone || 'No phone number entered';
-      if (sync) await syncClient(clientId).catch(error => showError(error.message));
       const messages = await clientMessages(clientId);
-      renderMessages(thread, messages);
-      await markClientRead(clientId);
+      if (closed || !dialog.isConnected) return;
+      const snapshot = JSON.stringify(messages);
+      if (snapshot !== lastMessageSnapshot) { renderMessages(thread, messages); lastMessageSnapshot = snapshot; }
+      if (messages.some(message => message.direction === 'inbound' && !message.read_at)) await markClientRead(clientId);
       sendButton.disabled = !client.phone;
     } catch (error) {
       showError(error instanceof Error ? error.message : 'Unable to load text conversation.');
     } finally {
       busy = false;
     }
+  }
+
+  async function syncInBackground(force = false) {
+    if (closed || syncing) return;
+    syncing = true;
+    try {
+      const result = await syncSms(clientId, { force });
+      if (!closed && !result?.skipped) { await load(); communicationsChanged('texts', clientId); }
+    } catch (error) { if (!closed) showError(error.message || 'Unable to check for new texts. Saved messages remain available.'); }
+    finally { syncing = false; }
   }
 
   async function send() {
@@ -133,7 +139,8 @@ export async function openClientThread(clientId) {
       body.value = '';
       count.textContent = '0/1500';
       busy = false;
-      await load({ sync: false });
+      await load();
+      communicationsChanged('texts', clientId);
     } catch (error) {
       showError(error instanceof Error ? error.message : 'Unable to send text.');
     } finally {
@@ -148,15 +155,21 @@ export async function openClientThread(clientId) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); void send(); }
   });
   sendButton.onclick = () => void send();
-  dialog.querySelector('[data-sms-refresh]').onclick = () => { showError(''); void load(); };
+  dialog.querySelector('[data-sms-refresh]').onclick = () => { showError(''); void load(); void syncInBackground(true); };
   dialog.querySelector('[data-sms-close]').onclick = () => dialog.close();
   dialog.addEventListener('cancel', event => { event.preventDefault(); dialog.close(); });
   dialog.addEventListener('close', () => { closed = true; if (timer) window.clearInterval(timer); dialog.remove(); updateGlobalUnread().catch(() => {}); });
 
   await load();
+  if (!closed) void syncInBackground();
+  const onChanged = event => {
+    if (event.detail?.kind === 'texts' && (!event.detail.clientId || event.detail.clientId === clientId)) void load();
+  };
+  window.addEventListener('mig:communications-changed', onChanged);
+  dialog.addEventListener('close', () => window.removeEventListener('mig:communications-changed', onChanged), { once:true });
   if (!closed) timer = window.setInterval(() => {
-    if (!closed && document.visibilityState === 'visible') void load();
-  }, 12000);
+    if (!closed && document.visibilityState === 'visible') { void load(); void syncInBackground(); }
+  }, 30000);
 }
 
 async function unreadForClient(clientId) {

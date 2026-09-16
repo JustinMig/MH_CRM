@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../commission-icon-screen.js', import.meta.url), 'utf8');
-const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const index = readFileSync(new URL('../workspace-extensions.js', import.meta.url), 'utf8');
 
 test('top Commissions icon is intercepted directly before the legacy onclick runs', () => {
   assert.match(source, /\[data-tool=\\?"commissions\\?"\]/);
@@ -33,6 +33,6 @@ test('same direct Commissions screen retains Medicare tracker', () => {
   for (const label of ['Current Medicare Book','AEP','OEP','SEP','T65 / IEP']) assert.match(source, new RegExp(label));
 });
 
-test('production index loads direct Commissions icon override last', () => {
-  assert.match(index, /client-summary-commissions\.js\?v=3[\s\S]*commission-icon-screen\.js\?v=1/);
+test('authenticated bundle loads direct Commissions override after summary', () => {
+  assert.match(index, /client-summary-commissions\.js[\s\S]*commission-icon-screen\.js/);
 });

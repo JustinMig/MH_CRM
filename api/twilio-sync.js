@@ -6,12 +6,12 @@ export async function GET(request) {
     const url = new URL(request.url);
     const clientId = url.searchParams.get('clientId') || '';
     if (clientId) {
-      const client = await getClient(clientId);
+      const client = await getClient(clientId, user);
       if (!client) return Response.json({ error: 'Client not found.' }, { status: 404 });
       const result = await syncClientMessages(client, user.id);
       return Response.json({ ok: true, scope: 'client', ...result });
     }
-    const result = await syncRecentMessages(user.id);
+    const result = await syncRecentMessages(user.id, user);
     return Response.json({ ok: true, scope: 'recent', ...result });
   } catch (error) {
     const status = Number(error?.status) || 500;

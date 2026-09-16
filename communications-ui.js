@@ -1,3 +1,5 @@
+import { syncSms } from './sms-sync.js';
+import { communicationsRendered } from './communications-events.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 import { openClientThread, smsAuthHeaders } from './client-texting.js';
 
@@ -29,13 +31,7 @@ function updateUnreadBadge(unread) {
   }
 }
 
-async function syncRecent() {
-  const headers = await smsAuthHeaders();
-  const response = await fetch('/api/twilio-sync', { headers, cache:'no-store' });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || 'Twilio message sync failed.');
-  return payload;
-}
+async function syncRecent(force = false) { return syncSms('', { force }); }
 
 async function conversationRows() {
   const { data: messages, error } = await supabase
@@ -57,7 +53,7 @@ async function conversationRows() {
   for (const message of messages || []) {
     const client = byId.get(message.client_id);
     // Communications is intentionally client-only: never show an unknown,
-    // deleted, unmatched, otherwise unsaved M&H client, or pre-M&H history.
+    // deleted, unmatched, otherwise unsaved Mayer MIG client, or pre-M&H history.
     if (!client) continue;
     let group = groups.get(message.client_id);
     if (!group) {
@@ -71,7 +67,7 @@ async function conversationRows() {
 }
 
 function conversationMarkup(groups) {
-  if (!groups.length) return '<div class="sms-center-empty"><h3>No M&H text conversations yet</h3><p>Only texts from saved M&H clients received or sent after M&H texting was connected appear here.</p></div>';
+  if (!groups.length) return '<div class="sms-center-empty"><h3>No Mayer MIG text conversations yet</h3><p>Only texts from saved Mayer MIG clients received or sent after Mayer MIG texting was connected appear here.</p></div>';
   return groups.map(group => {
     const client = group.client;
     const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Client';
@@ -99,8 +95,9 @@ async function loadCenter(host) {
       await openClientThread(button.dataset.smsConversation);
       if (host.isConnected) void loadCenter(host);
     });
+    communicationsRendered(host);
     updateUnreadBadge(unread);
-    status.textContent = `Saved M&H clients · M&H texting activity only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
+    status.textContent = `Saved Mayer MIG clients · Mayer MIG texting activity only · Updated ${new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' })}`;
   } catch (error) {
     if (host.isConnected) status.textContent = error instanceof Error ? error.message : 'Unable to load text messages.';
   } finally {
@@ -116,7 +113,7 @@ async function syncAndRefresh(host, { force = false } = {}) {
   const status = host.querySelector('[data-sms-center-status]');
   try {
     if (status) status.textContent = 'Checking Twilio for new saved-client replies…';
-    await syncRecent();
+    await syncRecent(force);
     lastSyncAt = Date.now();
     if (host.isConnected) await loadCenter(host);
   } catch (error) {
@@ -231,9 +228,9 @@ function mountCommunications() {
   const firstMount = !host.dataset.mounted;
   if (firstMount) {
     host.dataset.mounted = 'true';
-    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Saved M&H clients · M&H texting activity only</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
+    host.innerHTML = `<div class="sms-center-head"><div><span class="eyebrow">Twilio</span><h2>Client Text Messages</h2><p>Office number: (662) 572-2425 · Saved Mayer MIG clients · Mayer MIG texting activity only</p></div><div class="sms-center-actions"><button type="button" class="btn secondary" data-sms-sync>Sync Replies</button><button type="button" class="btn primary" data-sms-mass>+ Mass Text</button></div></div>
       <div class="sms-center-metrics"><div><span>Unread Replies</span><strong data-sms-unread-total>—</strong></div><div><span>Client Conversations</span><strong data-sms-conversation-total>—</strong></div><div><span>Twilio</span><strong class="sms-connected">Connected</strong></div></div>
-      <div class="sms-center-status" data-sms-center-status>Loading saved M&H conversations…</div>
+      <div class="sms-center-status" data-sms-center-status>Loading saved Mayer MIG conversations…</div>
       <div class="sms-conversations" data-sms-conversations></div>`;
     host.querySelector('[data-sms-sync]').onclick = () => void syncAndRefresh(host, { force:true });
     host.querySelector('[data-sms-mass]').onclick = massTextDialog;
@@ -258,3 +255,9 @@ window.addEventListener('focus', () => {
   if (location.hash.startsWith('#/communications')) window.setTimeout(mountCommunications, 0);
 });
 window.setTimeout(mountCommunications, 0);
+
+window.addEventListener('mig:communications-changed', event => {
+  if (event.detail?.kind !== 'texts') return;
+  const host = document.querySelector('#sms-communications-center');
+  if (host) void loadCenter(host);
+});
