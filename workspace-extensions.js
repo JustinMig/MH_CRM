@@ -6,7 +6,7 @@ import './banking-information.js?v=client-open-1';
 import './life-multiple-policies.js?v=client-open-1';
 import './life-other-carrier.js';
 import './client-pharmacy.js';
-import './client-health-tabs.js?v=medication-add-bottom-1';
+import './client-health-tabs.js?v=doctor-specialty-1';
 import './medication-autocomplete.js?v=rxterms-1';
 import './hospital-indemnity-documents.js';
 import './client-personal-underwriting.js';
