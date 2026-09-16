@@ -21,6 +21,21 @@ export function installClientAgeFilter(root) {
     return index >= 0 ? raw.slice(0, index) : raw;
   }
 
+  function ensureProductOptions(product) {
+    const options = [
+      ['non_medicare', 'Non Medicare'],
+      ['non_life', 'Non Life'],
+      ['non_life_medicare', 'Non Life & Medicare']
+    ];
+    for (const [value, label] of options) {
+      if (Array.from(product.options).some(option => option.value === value)) continue;
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      product.append(option);
+    }
+  }
+
   function decorate() {
     const form = root.querySelector('#client-search');
     if (!form || form.dataset.ageFilterReady === 'true') return;
@@ -32,6 +47,7 @@ export function installClientAgeFilter(root) {
     Array.from(product.options).forEach(option => {
       if (option.value === 't65' || option.value === '65plus') option.remove();
     });
+    ensureProductOptions(product);
 
     const field = document.createElement('label');
     field.className = 'field';
