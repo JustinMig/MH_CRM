@@ -26,6 +26,29 @@ function sectionBox({ key, title }, fields) {
   return box;
 }
 
+function ensureSsnControl(form, personalGrid) {
+  let ssn = form.elements.namedItem('ssn');
+  let ssnField = ssn instanceof HTMLElement ? ssn.closest('label.field') : null;
+  if (!ssnField) {
+    ssnField = document.createElement('label');
+    ssnField.className = 'field span-all';
+    ssnField.innerHTML = '<span>Social Security Number</span><input name="ssn" type="text" inputmode="numeric" autocomplete="off" placeholder="###-##-####">';
+    personalGrid.append(ssnField);
+    ssn = ssnField.querySelector('input[name="ssn"]');
+  }
+  if (ssn instanceof HTMLInputElement) {
+    ssn.type = 'text';
+    ssn.inputMode = 'numeric';
+    ssn.autocomplete = 'off';
+    ssn.placeholder = '###-##-####';
+    ssn.disabled = false;
+  }
+  ssnField.classList.add('span-all');
+  const label = ssnField.querySelector(':scope > span');
+  if (label) label.textContent = 'Social Security Number';
+  return ssnField;
+}
+
 function organizePersonalContact(form) {
   if (!form || form.dataset.intakeSectionsOrganized === 'true') return;
   const informationPanel = form.querySelector('[data-panel="information"]');
@@ -33,8 +56,8 @@ function organizePersonalContact(form) {
   const personalGrid = personalDetails?.querySelector(':scope > .form-grid');
   if (!personalGrid) return;
 
-  // Remove any obsolete standalone Social Security section from older builds.
   informationPanel?.querySelectorAll('[data-intake-section="social"]').forEach(node => node.remove());
+  ensureSsnControl(form, personalGrid);
 
   const originalChildren = Array.from(personalGrid.children);
   const boxes = [];
@@ -62,9 +85,7 @@ function organizePersonalContact(form) {
   }
 
   const leftovers = originalChildren.filter(child => !moved.has(child) && child.isConnected);
-  if (leftovers.length) {
-    boxes.push(sectionBox({ key: 'other', title: 'Additional Client Details' }, leftovers));
-  }
+  if (leftovers.length) boxes.push(sectionBox({ key: 'other', title: 'Additional Client Details' }, leftovers));
 
   personalGrid.replaceChildren(...boxes);
 
