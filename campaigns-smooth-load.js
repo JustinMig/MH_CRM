@@ -45,12 +45,51 @@
   const style = document.createElement('style');
   style.id = 'campaigns-smooth-load-style';
   style.textContent = `
-    #campaigns-host{min-height:260px}
-    #campaigns-host .cmp-campaign-grid{align-items:stretch;grid-auto-rows:1fr;min-height:188px}
-    #campaigns-host .cmp-campaign-card{box-sizing:border-box;min-height:188px;height:100%;transition:border-color .14s ease,background-color .14s ease,box-shadow .14s ease,opacity .12s ease;contain:layout paint}
-    #campaigns-host.cmp-is-refreshing .cmp-campaign-grid{opacity:.82}
+    #campaigns-host{min-height:190px}
+    #campaigns-host .cmp-campaign-grid{
+      grid-template-columns:repeat(auto-fill,minmax(220px,260px));
+      grid-auto-rows:132px;
+      align-items:stretch;
+      gap:10px;
+      min-height:132px;
+      justify-content:start;
+    }
+    #campaigns-host .cmp-campaign-card{
+      box-sizing:border-box;
+      width:100%;
+      height:132px;
+      min-height:132px;
+      max-height:132px;
+      padding:12px 14px;
+      gap:6px;
+      overflow:hidden;
+      transition:border-color .12s ease,background-color .12s ease,box-shadow .12s ease,opacity .1s ease;
+      contain:layout paint;
+    }
+    #campaigns-host .cmp-campaign-card>strong{
+      font-size:15px;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    #campaigns-host .cmp-campaign-card>span:not(.cmp-kicker):not(.cmp-card-foot){
+      font-size:11px;
+      line-height:1.3;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    #campaigns-host .cmp-campaign-card .cmp-kicker{font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #campaigns-host .cmp-card-foot{padding-top:7px;font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden}
+    #campaigns-host.cmp-is-refreshing .cmp-campaign-grid{opacity:.84}
     #campaigns-host.cmp-is-refreshing .cmp-empty{display:none}
-    @media(max-width:620px){#campaigns-host .cmp-campaign-grid{min-height:174px}#campaigns-host .cmp-campaign-card{min-height:174px}}
+    @media(max-width:620px){
+      #campaigns-host{min-height:168px}
+      #campaigns-host .cmp-campaign-grid{grid-template-columns:1fr;grid-auto-rows:124px;min-height:124px;gap:8px}
+      #campaigns-host .cmp-campaign-card{height:124px;min-height:124px;max-height:124px;padding:10px 12px}
+    }
   `;
   document.head.append(style);
 
