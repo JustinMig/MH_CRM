@@ -7,10 +7,51 @@ let pendingClientId = null;
 const clean = v => v === '' || v === undefined || v === null ? null : v;
 const money = v => v === '' || v === undefined || v === null ? null : Number(v);
 
+const DOCTOR_SPECIALTIES = [
+  ['', 'Choose Specialty'],
+  ['Primary Care Physician', 'Primary Care Physician'],
+  ['Family Medicine', 'Family Medicine'],
+  ['Internal Medicine', 'Internal Medicine'],
+  ['Cardiology', 'Cardiologist / Cardiology'],
+  ['Neurology', 'Neurologist / Neurology'],
+  ['Urology', 'Urologist / Urology'],
+  ['Optometry', 'Optometrist / Optometry'],
+  ['Ophthalmology', 'Ophthalmologist / Ophthalmology'],
+  ['Dentistry', 'Dentist / Dentistry'],
+  ['Orthopedics', 'Orthopedics'],
+  ['Pulmonology', 'Pulmonology'],
+  ['Gastroenterology', 'Gastroenterology'],
+  ['Endocrinology', 'Endocrinology'],
+  ['Nephrology', 'Nephrology'],
+  ['Rheumatology', 'Rheumatology'],
+  ['Dermatology', 'Dermatology'],
+  ['Oncology', 'Oncology'],
+  ['Hematology', 'Hematology'],
+  ['Psychiatry', 'Psychiatry'],
+  ['Pain Management', 'Pain Management'],
+  ['ENT / Otolaryngology', 'ENT / Otolaryngology'],
+  ['Podiatry', 'Podiatry'],
+  ['General Surgery', 'General Surgery'],
+  ['Vascular Surgery', 'Vascular Surgery'],
+  ['Allergy & Immunology', 'Allergy & Immunology'],
+  ['Infectious Disease', 'Infectious Disease'],
+  ['OB/GYN', 'OB/GYN'],
+  ['Other / Not Listed', 'Other / Not Listed']
+];
+
 const field = (name, label, value = '', extra = '') => `<label class="field"><span>${esc(label)}</span><input name="${name}" value="${esc(value)}" ${extra}></label>`;
 const area = (name, label, value = '') => `<label class="field span-all"><span>${esc(label)}</span><textarea name="${name}" rows="4">${esc(value)}</textarea></label>`;
 const select = (name, label, values, current = '') => `<label class="field"><span>${esc(label)}</span><select name="${name}">${values.map(([v,l]) => `<option value="${esc(v)}"${String(v)===String(current)?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
 const dateField = (name, label, value = '') => `<label class="field"><span>${esc(label)}</span><input name="${name}" data-date inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" value="${esc(dateText(value))}"></label>`;
+
+function specialtySelect(name, current = '') {
+  const value = String(current || '').trim();
+  const values = DOCTOR_SPECIALTIES.slice();
+  if (value && !values.some(([v]) => String(v).toLocaleLowerCase('en-US') === value.toLocaleLowerCase('en-US'))) {
+    values.splice(1, 0, [value, value]);
+  }
+  return select(name, 'Specialty', values, value);
+}
 
 function card(title, subtitle, body, index, kind, removable = true) {
   return `<details class="health-record-card health-${kind}" data-health-card data-kind="${kind}" data-index="${index}">
@@ -21,7 +62,7 @@ function card(title, subtitle, body, index, kind, removable = true) {
 function doctorMarkup(row = {}, i = 0) {
   const p = `doctor_${i}_`;
   const body = `<input type="hidden" name="${p}id" value="${esc(row.id || '')}">` +
-    field(`${p}doctor_name`, 'Doctor Name', row.doctor_name || '') + field(`${p}specialty`, 'Specialty', row.specialty || '') +
+    field(`${p}doctor_name`, 'Doctor Name', row.doctor_name || '') + specialtySelect(`${p}specialty`, row.specialty || '') +
     field(`${p}practice_name`, 'Practice / Facility', row.practice_name || '') + field(`${p}phone`, 'Phone', row.phone || '', 'type="tel"') +
     field(`${p}fax`, 'Fax', row.fax || '', 'type="tel"') + field(`${p}address`, 'Address', row.address || '') +
     field(`${p}city`, 'City', row.city || '') + field(`${p}state`, 'State', row.state || '') + field(`${p}zip_code`, 'ZIP Code', row.zip_code || '') +
