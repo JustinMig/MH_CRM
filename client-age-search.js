@@ -12,6 +12,15 @@ function decodeProductAndAge(value = '') {
   };
 }
 
+function applyProductFilter(query, product) {
+  if (product === 'deceased') return query.eq('status', 'deceased');
+  if (product === 'non_medicare') return query.not('products', 'cs', '{medicare}');
+  if (product === 'non_life') return query.not('products', 'cs', '{life}');
+  if (product === 'non_life_medicare') return query.not('products', 'cs', '{life}').not('products', 'cs', '{medicare}');
+  if (product) return query.contains('products', [product]);
+  return query;
+}
+
 export function makeClientSearch(db, { now = () => new Date() } = {}) {
   return async function searchClients({ query = '', product = '', agent = '', birthYear = '', sortBy = 'name', sortDirection, limit = 50, cursor = null } = {}) {
     const pageSize = Math.min(Math.max(Math.trunc(Number(limit)) || 50, 1), 50);
@@ -30,8 +39,7 @@ export function makeClientSearch(db, { now = () => new Date() } = {}) {
     }
 
     const decoded = decodeProductAndAge(product);
-    if (decoded.product === 'deceased') q = q.eq('status', 'deceased');
-    else if (decoded.product) q = q.contains('products', [decoded.product]);
+    q = applyProductFilter(q, decoded.product);
 
     if (decoded.age === 't65' || decoded.age === '65plus') {
       const bounds = clientAgeBounds(decoded.age, now());
