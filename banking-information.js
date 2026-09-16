@@ -3,6 +3,22 @@ import { mhRepository, supabase } from './supabase-repository.js';
 
 let pendingClientId = null;
 
+function beginBackgroundLoad(form, controller) {
+  const count = Number(form.dataset.clientBackgroundLoads || '0') + 1;
+  form.dataset.clientBackgroundLoads = String(count);
+  controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = true);
+}
+
+function endBackgroundLoad(form, controller) {
+  const count = Math.max(0, Number(form.dataset.clientBackgroundLoads || '0') - 1);
+  if (count) form.dataset.clientBackgroundLoads = String(count);
+  else {
+    delete form.dataset.clientBackgroundLoads;
+    controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = false);
+  }
+  controller.baseline?.();
+}
+
 function bySummary(panel, title) {
   return Array.from(panel.querySelectorAll('details.field-group'))
     .find(group => group.querySelector(':scope > summary')?.textContent.trim() === title) || null;
@@ -242,20 +258,13 @@ Dialogs.prototype.open = function patchedBankingOpen(options = {}) {
   const previousAttachForm = controller.attachForm.bind(controller);
   controller.attachForm = form => {
     enhance(form);
-    if (!dialogClientId) {
-      previousAttachForm(form);
-      return;
-    }
+    previousAttachForm(form);
+    if (!dialogClientId) return;
 
-    form.inert = true;
-    controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = true);
+    beginBackgroundLoad(form, controller);
     load(form, dialogClientId)
       .catch(error => status(form, error?.message || 'Unable to load banking information.', true))
-      .finally(() => {
-        previousAttachForm(form);
-        form.inert = false;
-        controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = false);
-      });
+      .finally(() => endBackgroundLoad(form, controller));
   };
   return controller;
 };
