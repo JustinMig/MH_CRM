@@ -9,6 +9,25 @@ async function saveOne(table, clientId, existingId, payload) {
   if (existingId) { const { data, error } = await supabase.from(table).update(body).eq('id', existingId).select().single(); if (error) throw error; return data; }
   const { data, error } = await supabase.from(table).insert(body).select().single(); if (error) throw error; return data;
 }
+async function sensitiveGet(clientId) {
+  try {
+    const { data, error } = await supabase.functions.invoke('client-sensitive', { body: { action: 'get', client_id: clientId } });
+    if (error || data?.error) return null;
+    return data?.sensitive || null;
+  } catch { return null; }
+}
+async function saveEncryptedLicense(clientId, licenseNumber) {
+  const current = await sensitiveGet(clientId) || {};
+  const next = {
+    ssn: current.ssn || '',
+    medicare_number: current.medicare_number || '',
+    medicaid_number: current.medicaid_number || '',
+    drivers_license_number: String(licenseNumber || '').trim()
+  };
+  const { data, error } = await supabase.functions.invoke('client-sensitive', { body: { action: 'save', client_id: clientId, sensitive: next } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
 
 export const mhRepository = {
   connected: true,
@@ -68,16 +87,17 @@ export const mhRepository = {
   async getClient(id) {
     const client = await one(supabase.from('clients').select('*').eq('id', id));
     if (!client) return null;
-    const [medicare, health, life, retirement] = await Promise.all([
+    const [medicare, health, life, retirement, sensitive] = await Promise.all([
       one(supabase.from('medicare_details').select('*').eq('client_id', id)),
       one(supabase.from('health_plans').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
       one(supabase.from('life_policies').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
-      one(supabase.from('retirement_accounts').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1))
+      one(supabase.from('retirement_accounts').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
+      sensitiveGet(id)
     ]);
     const p = client.products || [];
     return {
       ...client, address: client.address1 || '', zip: client.zip_code || '', spouse: client.spouse || '', notes: client.notes || '',
-      license_number: client.drivers_license_number || '', license_expiration: client.drivers_license_expiration || '', license_state: client.drivers_license_state || '',
+      license_number: sensitive?.drivers_license_number || client.drivers_license_number || '', license_expiration: client.drivers_license_expiration || '', license_state: client.drivers_license_state || '',
       product_medicare: p.includes('medicare'), product_life: p.includes('life'), product_retirement: p.includes('retirement'),
       part_a_date: medicare?.part_a_date || '', part_b_date: medicare?.part_b_date || '', medicaid_level: medicare?.medicaid_level || '', _medicare_id: medicare?.client_id || null,
       health_carrier: health?.carrier || '', health_plan_id: health?.plan_id || '', health_member_id: health?.member_id || '', health_effective_date: health?.effective_date || '', health_premium: health?.premium ?? '', _health_id: health?.id || null,
@@ -92,7 +112,7 @@ export const mhRepository = {
       assigned_agent_id: clean(record.assigned_agent_id) || this.user?.id || null,
       first_name: record.first_name?.trim(), last_name: record.last_name?.trim(), date_of_birth: clean(record.date_of_birth), gender: clean(record.gender),
       email: clean(record.email), phone: clean(record.phone), address1: clean(record.address), city: clean(record.city), county: clean(record.county), state: clean(record.state), zip_code: clean(record.zip),
-      drivers_license_number: clean(record.license_number), drivers_license_expiration: clean(record.license_expiration), drivers_license_state: clean(record.license_state), spouse: clean(record.spouse), products, notes: clean(record.notes)
+      drivers_license_number: null, drivers_license_expiration: clean(record.license_expiration), drivers_license_state: clean(record.license_state), spouse: clean(record.spouse), products, notes: clean(record.notes)
     };
 
     this.lastSavedClientId = null;
@@ -114,6 +134,8 @@ export const mhRepository = {
     }
     this.lastSavedClientId = client.id;
 
+    if ('license_number' in record) await saveEncryptedLicense(client.id, record.license_number);
+
     const { error: medErr } = await supabase.from('medicare_details').upsert({ client_id: client.id, part_a_date: clean(record.part_a_date), part_b_date: clean(record.part_b_date), medicaid_level: clean(record.medicaid_level) }, { onConflict: 'client_id' });
     if (medErr) throw medErr;
 
@@ -133,6 +155,7 @@ export const mhRepository = {
       ...record,
       ...client,
       id: client.id,
+      license_number: record.license_number ?? '',
       address: client.address1 || record.address || '',
       zip: client.zip_code || record.zip || '',
       product_medicare: products.includes('medicare'),
@@ -173,6 +196,6 @@ export const mhRepository = {
   async listNotes() { const { data, error } = await supabase.from('client_notes').select('*').order('created_at', { ascending: false }).limit(100); if (error) throw error; return data || []; },
   async saveNote(value) { const body = { client_id: clean(value.client_id), author_id: this.user?.id, title: value.title || 'Note', body: value.body || value.notes || '', pinned: !!value.pinned }; const { data, error } = value.id ? await supabase.from('client_notes').update(body).eq('id', value.id).select().single() : await supabase.from('client_notes').insert(body).select().single(); if (error) throw error; return data; },
   async searchContacts(query = '') { let q = supabase.from('company_contacts').select('*').order('company').limit(50); if (query) q = q.ilike('company', `%${query.replace(/[%]/g,' ')}%`); const { data, error } = await q; if (error) throw error; return data || []; },
-  async commissions({ agent } = {}) { let q = supabase.from('commissions').select('*').order('earned_date', { ascending: false }).limit(500); if (agent) q = q.eq('agent_id', agent); const { data, error } = await q; if (error) throw error; const rows = data || []; return { rows, total: rows.reduce((s,r)=>s+Number(r.amount||0),0) }; },
+  async commissions({ agent } = {}) { let q = supabase.from('commissions').select('*').order('earned_date', { ascending: false }).limit(500); if (agent) q = q.eq('agent_id', agent); if (error) throw error; const rows = data || []; return { rows, total: rows.reduce((s,r)=>s+Number(r.amount||0),0) }; },
   async getBuildChart() { return []; }
 };
