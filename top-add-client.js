@@ -1,37 +1,17 @@
 const root = document.querySelector('#app');
-let openClientHandler = null;
 
-function sourceButton() {
-  if (!root) return null;
-  return Array.from(root.querySelectorAll('[data-add-client]'))
-    .find(button => !button.closest('.quick-tools') && !button.hasAttribute('data-top-new-client')) || null;
-}
-
-function rememberOpenClient() {
-  const source = sourceButton();
-  if (source && typeof source.onclick === 'function') openClientHandler = source.onclick;
-  return source;
-}
-
-function openNewClient(event) {
-  const source = rememberOpenClient();
-  if (openClientHandler) {
-    openClientHandler.call(source || event.currentTarget, event);
-    return;
+function openNewClient() {
+  // Use the workspace's own legacy client route. workspace.js intentionally
+  // converts #/client to the Clients screen and then opens a fresh client dialog.
+  if (location.hash === '#/client') {
+    // Force a hashchange even if the user somehow clicks while already on this route.
+    history.replaceState(null, '', '#/clients');
   }
-
-  // Rare fallback: if the CRM opened directly on a screen with no Add Client control,
-  // go to Dashboard once, then use the workspace's normal New Client action.
-  if (location.hash !== '#/dashboard') location.hash = '#/dashboard';
-  setTimeout(() => {
-    const dashboardSource = rememberOpenClient();
-    if (dashboardSource) dashboardSource.click();
-  }, 0);
+  location.hash = '#/client';
 }
 
 function ensureTopAddClient() {
   if (!root) return;
-  rememberOpenClient();
   const quickTools = root.querySelector('.quick-tools');
   if (!quickTools) return;
   if (quickTools.querySelector('[data-top-new-client]')) return;
@@ -40,7 +20,6 @@ function ensureTopAddClient() {
   button.type = 'button';
   button.className = 'quick-tool';
   button.dataset.topNewClient = 'true';
-  button.dataset.addClient = '';
   button.title = 'New Client';
   button.setAttribute('aria-label', 'New Client');
   button.setAttribute('aria-haspopup', 'dialog');
