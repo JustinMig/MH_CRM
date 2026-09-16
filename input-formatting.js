@@ -1,4 +1,5 @@
 const digits = (value, max) => String(value || '').replace(/\D/g, '').slice(0, max);
+const nameAutoHandled = new WeakSet();
 
 function formatSsn(value) {
   const d = digits(value, 9);
@@ -35,6 +36,12 @@ function isPhone(input) {
   return /(^|_)(phone|phone_number)(_|$)/.test(name) || name.includes('verification_phone');
 }
 
+function isClientName(input) {
+  return input instanceof HTMLInputElement &&
+    (input.name === 'first_name' || input.name === 'last_name') &&
+    !!input.closest('form.client-form, dialog.client-dialog');
+}
+
 function configure(input) {
   if (isSsn(input)) {
     input.inputMode = 'numeric';
@@ -63,9 +70,35 @@ function applyFormat(input) {
   }
 }
 
+function autoCapitalizeName(input) {
+  if (!isClientName(input)) return;
+  const value = input.value;
+  if (!value) {
+    nameAutoHandled.delete(input);
+    return;
+  }
+  if (nameAutoHandled.has(input)) return;
+  const firstIndex = value.search(/[A-Za-z]/);
+  if (firstIndex < 0) return;
+  const first = value[firstIndex];
+  nameAutoHandled.add(input);
+  if (first !== first.toLowerCase()) return;
+  const formatted = value.slice(0, firstIndex) + first.toUpperCase() + value.slice(firstIndex + 1);
+  const cursor = input.selectionStart;
+  input.value = formatted;
+  if (cursor != null) {
+    try { input.setSelectionRange(cursor, cursor); } catch {}
+  }
+}
+
 document.addEventListener('focusin', event => {
   const input = event.target;
   if (!(input instanceof HTMLInputElement)) return;
+  if (isClientName(input)) {
+    // Existing saved names are left exactly as stored. New blank entries are eligible for one-time capitalization.
+    if (!input.value) nameAutoHandled.delete(input);
+    else nameAutoHandled.add(input);
+  }
   if (!isSsn(input) && !isPhone(input)) return;
   configure(input);
   applyFormat(input);
@@ -74,6 +107,7 @@ document.addEventListener('focusin', event => {
 document.addEventListener('input', event => {
   const input = event.target;
   if (!(input instanceof HTMLInputElement)) return;
+  if (isClientName(input)) autoCapitalizeName(input);
   if (!isSsn(input) && !isPhone(input)) return;
   configure(input);
   applyFormat(input);
@@ -82,9 +116,12 @@ document.addEventListener('input', event => {
 document.addEventListener('paste', event => {
   const input = event.target;
   if (!(input instanceof HTMLInputElement)) return;
-  if (!isSsn(input) && !isPhone(input)) return;
+  if (!isSsn(input) && !isPhone(input) && !isClientName(input)) return;
   queueMicrotask(() => {
-    configure(input);
-    applyFormat(input);
+    if (isClientName(input)) autoCapitalizeName(input);
+    if (isSsn(input) || isPhone(input)) {
+      configure(input);
+      applyFormat(input);
+    }
   });
 }, true);
