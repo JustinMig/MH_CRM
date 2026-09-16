@@ -87,17 +87,16 @@ export const mhRepository = {
   async getClient(id) {
     const client = await one(supabase.from('clients').select('*').eq('id', id));
     if (!client) return null;
-    const [medicare, health, life, retirement, sensitive] = await Promise.all([
+    const [medicare, health, life, retirement] = await Promise.all([
       one(supabase.from('medicare_details').select('*').eq('client_id', id)),
       one(supabase.from('health_plans').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
       one(supabase.from('life_policies').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
-      one(supabase.from('retirement_accounts').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
-      sensitiveGet(id)
+      one(supabase.from('retirement_accounts').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1))
     ]);
     const p = client.products || [];
     return {
       ...client, address: client.address1 || '', zip: client.zip_code || '', spouse: client.spouse || '', notes: client.notes || '',
-      license_number: sensitive?.drivers_license_number || client.drivers_license_number || '', license_expiration: client.drivers_license_expiration || '', license_state: client.drivers_license_state || '',
+      license_number: client.drivers_license_number || '', license_expiration: client.drivers_license_expiration || '', license_state: client.drivers_license_state || '',
       product_medicare: p.includes('medicare'), product_life: p.includes('life'), product_retirement: p.includes('retirement'),
       part_a_date: medicare?.part_a_date || '', part_b_date: medicare?.part_b_date || '', medicaid_level: medicare?.medicaid_level || '', _medicare_id: medicare?.client_id || null,
       health_carrier: health?.carrier || '', health_plan_id: health?.plan_id || '', health_member_id: health?.member_id || '', health_effective_date: health?.effective_date || '', health_premium: health?.premium ?? '', _health_id: health?.id || null,
