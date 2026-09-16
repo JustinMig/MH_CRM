@@ -11,6 +11,7 @@ import './client-health-tabs.js';
 import './hospital-indemnity-documents.js';
 import './client-personal-underwriting.js';
 import './client-intake-sections.js';
+import './client-ssn-field.js?v=1';
 import './campaign-stage-layout.js';
 import './campaign-call-placeholder.js';
 import './campaign-list-compact.js';
