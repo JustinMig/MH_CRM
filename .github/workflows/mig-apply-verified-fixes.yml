@@ -56,9 +56,11 @@ jobs:
         run: |
           set -o pipefail
           NODE_PATH=/tmp/mig-browser/node_modules node tests/browser-regressions.cjs | tee test-results/browser-output.txt
-      - name: Commit only verified fixes to the isolated branch
+      - name: Commit only verified application files to the isolated branch
         run: |
-          git rm tools/approved-fix.*.b64 .github/workflows/mig-apply-verified-fixes.yml .github/workflows/mig-fix-source.yml
+          cp .github/workflows/ci.yml /tmp/verified-ci.yml
+          git restore --source=HEAD -- .github/workflows
+          git rm tools/approved-fix.*.b64
           git add -A
           git reset -- test-results build-metafile.json
           git config user.name 'github-actions[bot]'
@@ -72,6 +74,7 @@ jobs:
           tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=test-results --exclude='.env*' -cf /tmp/mig-verification/source.tar .
           test ! -d test-results || cp -r test-results /tmp/mig-verification/
           test ! -f build-metafile.json || cp build-metafile.json /tmp/mig-verification/
+          test ! -f /tmp/verified-ci.yml || cp /tmp/verified-ci.yml /tmp/mig-verification/
           git rev-parse HEAD > /tmp/mig-verification/commit.txt
       - uses: actions/upload-artifact@v4
         if: always()
