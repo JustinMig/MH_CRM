@@ -78,7 +78,7 @@ async function savePolicies(clientId, policies) {
 }
 
 const baseGetClient=mhRepository.getClient.bind(mhRepository);
-mhRepository.getClient=async function getClientWithAllLifePolicies(id){const record=await baseGetClient(id);if(!record)return record;const{data,error}=await supabase.from('life_policies').select('*').eq('client_id',id).order('created_at',{ascending:true});if(error)throw error;const policies=data||[];policyCache.set(id,policies);return{...record,_life_policies:policies};};
+mhRepository.getClient=async function getClientWithAllLifePolicies(id){const [record,policiesResult]=await Promise.all([baseGetClient(id),supabase.from('life_policies').select('*').eq('client_id',id).order('created_at',{ascending:true})]);if(!record)return record;const{data,error}=policiesResult;if(error)throw error;const policies=data||[];policyCache.set(id,policies);return{...record,_life_policies:policies};};
 
 const baseSaveClient=mhRepository.saveClient.bind(mhRepository);
 mhRepository.saveClient=async function saveClientWithAllLifePolicies(record,...args){const policies=parsePolicies(record);const saved=await baseSaveClient(withoutLegacyLife(record),...args);if(!saved?.id)return saved;const savedPolicies=await savePolicies(saved.id,policies);policyCache.set(saved.id,savedPolicies);const dialog=Array.from(document.querySelectorAll('dialog.client-dialog')).at(-1);const form=dialog?.querySelector('form.client-form');if(form)renderLifePanel(form,savedPolicies);return{...saved,_life_policies:savedPolicies};};
