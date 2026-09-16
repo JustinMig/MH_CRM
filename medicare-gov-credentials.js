@@ -8,7 +8,23 @@ function groupBySummary(panel, title) {
     .find(group => group.querySelector(':scope > summary')?.textContent.trim() === title) || null;
 }
 
-// SSN placement is owned by client-intake-sections/client-ssn-field.
+function beginBackgroundLoad(form, controller) {
+  const count = Number(form.dataset.clientBackgroundLoads || '0') + 1;
+  form.dataset.clientBackgroundLoads = String(count);
+  controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = true);
+}
+
+function endBackgroundLoad(form, controller) {
+  const count = Math.max(0, Number(form.dataset.clientBackgroundLoads || '0') - 1);
+  if (count) form.dataset.clientBackgroundLoads = String(count);
+  else {
+    delete form.dataset.clientBackgroundLoads;
+    controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = false);
+  }
+  controller.baseline?.();
+}
+
+// SSN placement is owned by client-intake-sections.
 // This secure-data module only configures the existing field and never moves it.
 function keepSocialVisible(form) {
   const ssn = form.elements.namedItem('ssn');
@@ -118,6 +134,7 @@ function applySensitive(form, sensitive) {
   setValue(form, 'ssn', sensitive.ssn);
   setValue(form, 'medicare_number', sensitive.medicare_number);
   setValue(form, 'medicaid_number', sensitive.medicaid_number);
+  setValue(form, 'license_number', sensitive.drivers_license_number);
   return true;
 }
 
@@ -196,20 +213,13 @@ Dialogs.prototype.open = function patchedMedicareCredentialsOpen(options = {}) {
   const previousAttachForm = controller.attachForm.bind(controller);
   controller.attachForm = form => {
     enhanceCredentialForm(form);
-    if (!dialogClientId) {
-      previousAttachForm(form);
-      return;
-    }
+    previousAttachForm(form);
+    if (!dialogClientId) return;
 
-    form.inert = true;
-    controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = true);
+    beginBackgroundLoad(form, controller);
     loadSecureClientData(form, dialogClientId)
       .catch(error => setCredentialStatus(form, error?.message || 'Unable to load encrypted client information.', true))
-      .finally(() => {
-        previousAttachForm(form);
-        form.inert = false;
-        controller.node.querySelectorAll('[data-save]').forEach(button => button.disabled = false);
-      });
+      .finally(() => endBackgroundLoad(form, controller));
   };
   return controller;
 };
