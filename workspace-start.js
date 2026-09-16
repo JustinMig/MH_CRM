@@ -46,7 +46,7 @@ export async function startWorkspace() {
   document.body.dataset.singleAgent = String(mhRepository.agents.length <= 1);
   if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
   if (['owner','admin'].includes(mhRepository.profile?.role)) installMayerJustinCalendar();
-  await import('./workspace-extensions.js');
+  await import('./workspace-extensions.js?v=blank-search-all-2');
   installClientDuplicateCheck();
   await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
