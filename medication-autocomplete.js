@@ -15,10 +15,6 @@ function stateFor(input) {
   return state;
 }
 
-function medicationIndex(input) {
-  return /^medication_(\d+)_/.exec(input.name)?.[1] || '';
-}
-
 function prepareCard(card) {
   if (!card || card.dataset.medicationLookupReady === 'true') return;
   card.dataset.medicationLookupReady = 'true';
@@ -208,11 +204,10 @@ document.addEventListener('input', event => {
   const input = event.target;
   if (!isMedicationName(input)) return;
   prepareCard(cardFor(input));
-  if (input.dataset.rxSelecting !== 'true') {
-    const card = cardFor(input);
-    const strength = card?.querySelector('[name$="_strength"]');
-    if (strength instanceof HTMLSelectElement) makeManualStrength(card, '');
-  }
+  if (input.dataset.rxSelecting === 'true') return;
+  const card = cardFor(input);
+  const strength = card?.querySelector('[name$="_strength"]');
+  if (strength instanceof HTMLSelectElement) makeManualStrength(card, '');
   scheduleSearch(input);
 }, true);
 
