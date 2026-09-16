@@ -10,6 +10,7 @@ import { installCarrierVault } from './carriers-ui.js';
 import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
 import { installClientAgeFilter } from './client-age-filter.js';
 import { installClientDelete } from './client-delete.js';
+import { installSimpleDashboardNote } from './dashboard-note-simple.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -46,6 +47,7 @@ export async function startWorkspace() {
   createWorkspace(root, mhRepository);
   installClientAgeFilter(root);
   installClientDelete(root, mhRepository);
+  installSimpleDashboardNote(root);
   installDashboardCleanup(root);
   installAppointmentSingleAgent(root, mhRepository);
   installAdminUsers(root, mhRepository);
