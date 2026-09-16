@@ -3,7 +3,7 @@ const root = document.querySelector('#app');
 function moveAddClientToTop() {
   if (!root) return;
   const quickTools = root.querySelector('.quick-tools');
-  const pageButton = root.querySelector('.page-heading [data-add-client]');
+  const pageButton = Array.from(root.querySelectorAll('[data-add-client]')).find(button => !button.closest('.quick-tools')) || null;
   if (!quickTools || !pageButton) return;
 
   const existing = quickTools.querySelector('[data-add-client]');
