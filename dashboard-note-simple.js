@@ -18,6 +18,7 @@ export function installSimpleDashboardNote(root) {
           <button type="button" class="modal-close" data-note-close aria-label="Close">×</button>
         </header>
         <div class="modal-body">
+          <label class="field span-all"><span>Note Name</span><input data-dashboard-note-title maxlength="120" placeholder="Name this note"></label>
           <label class="field span-all"><span>Note</span><textarea data-dashboard-note rows="12" placeholder="Write your note here…"></textarea></label>
           <p class="subtle" data-note-status>Loading note…</p>
         </div>
@@ -28,24 +29,28 @@ export function installSimpleDashboardNote(root) {
       </div>`;
     document.body.append(dialog);
 
+    const title = dialog.querySelector('[data-dashboard-note-title]');
     const area = dialog.querySelector('[data-dashboard-note]');
     const save = dialog.querySelector('[data-note-save]');
     const dirty = dialog.querySelector('[data-note-dirty]');
     const status = dialog.querySelector('[data-note-status]');
     let noteId = null;
-    let baseline = '';
+    let baselineTitle = '';
+    let baselineBody = '';
     let loading = true;
 
+    const isChanged = () => title.value !== baselineTitle || area.value !== baselineBody;
     const syncDirty = () => {
       if (loading) return;
-      const changed = area.value !== baseline;
+      const changed = isChanged();
       save.disabled = !changed;
       dirty.textContent = changed ? 'Unsaved changes' : 'No changes';
     };
 
+    title.addEventListener('input', syncDirty);
     area.addEventListener('input', syncDirty);
     dialog.querySelectorAll('[data-note-close]').forEach(button => button.addEventListener('click', () => {
-      if (area.value !== baseline && !confirm('Close without saving your note changes?')) return;
+      if (isChanged() && !confirm('Close without saving your note changes?')) return;
       dialog.close();
     }));
     dialog.addEventListener('close', () => dialog.remove());
@@ -54,9 +59,12 @@ export function installSimpleDashboardNote(root) {
       save.disabled = true;
       status.textContent = 'Saving…';
       try {
-        const saved = await mhRepository.saveNote({ id: noteId, client_id: null, title: 'Dashboard Note', body: area.value, pinned: true });
+        const noteTitle = title.value.trim() || 'Dashboard Note';
+        const saved = await mhRepository.saveNote({ id: noteId, client_id: null, title: noteTitle, body: area.value, pinned: true });
         noteId = saved?.id || noteId;
-        baseline = area.value;
+        title.value = noteTitle;
+        baselineTitle = title.value;
+        baselineBody = area.value;
         dirty.textContent = 'No changes';
         status.textContent = 'Saved.';
       } catch (error) {
@@ -73,21 +81,23 @@ export function installSimpleDashboardNote(root) {
         if (!userId) throw new Error('Your session expired. Please sign in again.');
         const { data, error } = await supabase
           .from('client_notes')
-          .select('id,body')
+          .select('id,title,body')
           .is('client_id', null)
           .eq('author_id', userId)
           .maybeSingle();
         if (error) throw error;
         noteId = data?.id || null;
+        title.value = data?.title || '';
         area.value = data?.body || '';
-        baseline = area.value;
+        baselineTitle = title.value;
+        baselineBody = area.value;
         status.textContent = data ? 'Your note is ready.' : 'No note saved yet.';
       } catch (error) {
         status.textContent = error?.message || 'The note could not load.';
       } finally {
         loading = false;
         syncDirty();
-        area.focus();
+        title.focus();
       }
     })();
   }
