@@ -2,8 +2,7 @@ import { Dialogs } from './dialogs.js';
 
 const GROUPS = [
   { key: 'name', title: 'Client Name', fields: ['first_name', 'last_name'] },
-  { key: 'demographics', title: 'Date of Birth & Gender', fields: ['date_of_birth', 'gender'] },
-  { key: 'social', title: 'Social Security Number', fields: ['ssn'] },
+  { key: 'demographics', title: 'Date of Birth & Gender', fields: ['date_of_birth', 'gender', 'ssn'] },
   { key: 'contact', title: 'Email & Phone', fields: ['email', 'phone'] },
   { key: 'address', title: 'Address', fields: ['address', 'city', 'county', 'state', 'zip'] },
   { key: 'household', title: 'Client Assignment & Household', fields: ['assigned_agent_id', 'spouse'] }
@@ -33,6 +32,9 @@ function organizePersonalContact(form) {
   const personalDetails = informationPanel?.querySelector('details.field-group');
   const personalGrid = personalDetails?.querySelector(':scope > .form-grid');
   if (!personalGrid) return;
+
+  // Remove any obsolete standalone Social Security section from older builds.
+  informationPanel?.querySelectorAll('[data-intake-section="social"]').forEach(node => node.remove());
 
   const originalChildren = Array.from(personalGrid.children);
   const boxes = [];
@@ -65,6 +67,13 @@ function organizePersonalContact(form) {
   }
 
   personalGrid.replaceChildren(...boxes);
+
+  const demographics = personalGrid.querySelector('[data-intake-section="demographics"]');
+  const ssnField = fieldFor(form, 'ssn');
+  if (demographics && ssnField) {
+    ssnField.classList.add('span-all');
+    demographics.append(ssnField);
+  }
 
   const identification = informationPanel.querySelectorAll('details.field-group')[1];
   const identificationSummary = identification?.querySelector(':scope > summary');
