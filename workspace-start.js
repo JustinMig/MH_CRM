@@ -44,6 +44,7 @@ export async function startWorkspace() {
   if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
   if (['owner','admin'].includes(mhRepository.profile?.role)) installMayerJustinCalendar();
   await import('./workspace-extensions.js');
+  await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
   createWorkspace(root, mhRepository);
   installClientAgeFilter(root);
