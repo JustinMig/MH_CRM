@@ -96,7 +96,6 @@ export function createWorkspace(root, repository = disconnectedRepository) {
     const cursor = more ? s.nextCursor : null;
     if (!more) { s.rows = null; s.nextCursor = null; }
     s.error = ''; s.message = ''; s.loading = false;
-    if (!(criteria.query || criteria.product || criteria.agent)) { s.applied = null; s.message = 'Enter a search or choose a product / status.'; drawResults(); return; }
     if (!more) s.applied = criteria;
     s.loading = true; s.message = 'Searching…'; drawResults();
     try {
