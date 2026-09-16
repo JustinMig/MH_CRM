@@ -11,6 +11,7 @@ import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar
 import { installClientAgeFilter } from './client-age-filter.js';
 import { installClientDelete } from './client-delete.js';
 import { installSimpleDashboardNote } from './dashboard-note-simple.js';
+import { installClientDateAndDragDrop } from './client-date-dragdrop.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -48,6 +49,7 @@ export async function startWorkspace() {
   installClientAgeFilter(root);
   installClientDelete(root, mhRepository);
   installSimpleDashboardNote(root);
+  installClientDateAndDragDrop(root);
   installDashboardCleanup(root);
   installAppointmentSingleAgent(root, mhRepository);
   installAdminUsers(root, mhRepository);
