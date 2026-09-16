@@ -1,0 +1,9 @@
+[data-panel="medications"] .medication-name-field{position:relative}
+.medication-autocomplete-menu{position:absolute;z-index:180;left:0;right:0;top:calc(100% + 4px);max-height:300px;overflow:auto;background:#fff;border:1px solid #cfd9e2;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.18);padding:4px}
+.medication-autocomplete-option{display:flex;width:100%;border:0;background:#fff;color:#263746;text-align:left;padding:9px 10px;border-radius:7px;font:inherit;font-size:.88rem;cursor:pointer;align-items:center;justify-content:space-between;gap:12px}
+.medication-autocomplete-option small{flex:0 0 auto;color:#718096;font-size:.72rem;font-weight:700}
+.medication-autocomplete-option:hover,.medication-autocomplete-option:focus{background:#edf4f8;outline:none}
+.medication-lookup-status{display:block;margin-top:5px;font-size:.72rem;font-weight:600;color:#718096}
+.medication-lookup-status.no-results{font-weight:500}
+.health-tab-bottom-actions{display:flex;justify-content:flex-end;margin-top:14px}
+@media(max-width:700px){.medication-autocomplete-menu{max-height:240px}.health-tab-bottom-actions .btn{width:100%}}
