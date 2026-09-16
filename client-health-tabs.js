@@ -56,9 +56,16 @@ function panelMarkup(kind, rows) {
     hospital_indemnity: { title:'Hospital Indemnity Plans', copy:'Add each hospital indemnity policy separately.', add:'+ Add Plan', renderer:indemnityMarkup }
   };
   const c = configs[kind], list = rows || [];
-  return `<div class="health-tab-toolbar"><div><h3>${c.title}</h3><p>${c.copy}</p></div><button type="button" class="btn primary" data-add-health-record="${kind}">${c.add}</button></div>
+  const addButton = `<button type="button" class="btn primary" data-add-health-record="${kind}">${c.add}</button>`;
+  const topButton = kind === 'medications' ? '' : addButton;
+  const bottomButton = kind === 'medications' ? `<div class="health-tab-bottom-actions">${addButton}</div>` : '';
+  const emptyCopy = kind === 'medications'
+    ? 'No medications saved yet. Use the Add Medication button below.'
+    : `No ${kind === 'hospital_indemnity' ? 'hospital indemnity plans' : kind} saved yet. Use the Add button above.`;
+  return `<div class="health-tab-toolbar"><div><h3>${c.title}</h3><p>${c.copy}</p></div>${topButton}</div>
     <div class="health-record-list" data-health-list="${kind}">${list.map((row,i)=>c.renderer(row,i)).join('')}</div>
-    <div class="health-tab-empty" data-health-empty="${kind}"${list.length?' hidden':''}>No ${kind === 'hospital_indemnity' ? 'hospital indemnity plans' : kind} saved yet. Use the Add button above.</div>`;
+    <div class="health-tab-empty" data-health-empty="${kind}"${list.length?' hidden':''}>${emptyCopy}</div>
+    ${bottomButton}`;
 }
 function render(form, data = {}) {
   const doctors = form.querySelector('[data-panel="doctors"]');
