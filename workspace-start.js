@@ -12,6 +12,7 @@ import { installClientAgeFilter } from './client-age-filter.js';
 import { installClientDelete } from './client-delete.js';
 import { installSimpleDashboardNote } from './dashboard-note-simple.js';
 import { installClientDateAndDragDrop } from './client-date-dragdrop.js';
+import { installClientDuplicateCheck } from './client-duplicate-check.js?v=1';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -44,6 +45,7 @@ export async function startWorkspace() {
   if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
   if (['owner','admin'].includes(mhRepository.profile?.role)) installMayerJustinCalendar();
   await import('./workspace-extensions.js');
+  installClientDuplicateCheck();
   await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
   createWorkspace(root, mhRepository);
