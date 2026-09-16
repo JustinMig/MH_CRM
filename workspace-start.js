@@ -1,4 +1,4 @@
-import { makeClientSearch } from './client-search.js';
+import { makeClientSearch } from './client-age-search.js';
 import { createCampaignRepository } from './campaigns-repository.js';
 import { createWorkspace } from './workspace.js';
 import { mhRepository, supabase } from './supabase-repository.js';
@@ -8,6 +8,7 @@ import { installDashboardCleanup } from './dashboard-cleanup.js';
 import { installAppointmentSingleAgent } from './appointment-ui.js';
 import { installCarrierVault } from './carriers-ui.js';
 import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
+import { installClientAgeFilter } from './client-age-filter.js';
 
 const root = document.querySelector('#app');
 installPullToRefresh();
@@ -42,6 +43,7 @@ export async function startWorkspace() {
   await import('./workspace-extensions.js');
   await import('./campaigns-smooth-load.js?v=1');
   createWorkspace(root, mhRepository);
+  installClientAgeFilter(root);
   installDashboardCleanup(root);
   installAppointmentSingleAgent(root, mhRepository);
   installAdminUsers(root, mhRepository);
