@@ -13,24 +13,24 @@ function ensureSsnField(form) {
 
   if (!ssnField) {
     ssnField = document.createElement('label');
-    ssnField.className = 'field';
+    ssnField.className = 'field span-all';
     ssnField.innerHTML = '<span>Social Security Number</span><input name="ssn" type="text" inputmode="numeric" autocomplete="off" placeholder="###-##-####">';
     ssn = ssnField.querySelector('input[name="ssn"]');
   }
 
+  // Remove the obsolete standalone SSN box from older layouts.
+  form.querySelectorAll('[data-intake-section="social"]').forEach(box => {
+    if (box.contains(ssnField)) box.removeChild(ssnField);
+    box.remove();
+  });
+
   const demographicBox = (genderField || dobField)?.closest?.('[data-intake-section="demographics"]');
-  const existingSocialBox = form.querySelector('[data-intake-section="social"]');
   if (demographicBox) {
-    let socialBox = existingSocialBox;
-    if (!socialBox) {
-      socialBox = document.createElement('section');
-      socialBox.className = 'intake-section-box intake-section-social span-all';
-      socialBox.dataset.intakeSection = 'social';
-      socialBox.setAttribute('aria-label', 'Social Security Number');
-      socialBox.innerHTML = '<div class="intake-section-title span-all"><strong>Social Security Number</strong></div>';
+    ssnField.classList.add('span-all');
+    // Keep DOB + Gender on the first row and SSN immediately below them.
+    if (ssnField.parentElement !== demographicBox || ssnField !== demographicBox.lastElementChild) {
+      demographicBox.append(ssnField);
     }
-    if (ssnField.parentElement !== socialBox) socialBox.append(ssnField);
-    if (socialBox.previousElementSibling !== demographicBox) demographicBox.insertAdjacentElement('afterend', socialBox);
   } else {
     const anchor = genderField || dobField;
     if (anchor && ssnField.previousElementSibling !== anchor) anchor.insertAdjacentElement('afterend', ssnField);
@@ -40,7 +40,7 @@ function ensureSsnField(form) {
     ssn.type = 'text';
     ssn.inputMode = 'numeric';
     ssn.autocomplete = 'off';
-    if (!ssn.placeholder) ssn.placeholder = '###-##-####';
+    ssn.placeholder = '###-##-####';
     ssn.disabled = false;
   }
 
