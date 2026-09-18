@@ -1,15 +1,15 @@
 // Loaded only after authentication. Bundled into a single deferred feature chunk.
 import './input-formatting.js';
 import './client-product-status.js';
-import './medicare-gov-credentials.js?v=client-open-1';
-import './banking-information.js?v=client-open-1';
-import './life-multiple-policies.js?v=client-open-1';
+import './medicare-gov-credentials.js?v=new-client-isolation-1';
+import './banking-information.js?v=new-client-isolation-1';
+import './life-multiple-policies.js?v=new-client-isolation-1';
 import './life-other-carrier.js';
-import './client-pharmacy.js';
-import './client-health-tabs.js?v=doctor-specialty-1';
+import './client-pharmacy.js?v=new-client-isolation-1';
+import './client-health-tabs.js?v=new-client-isolation-1';
 import './medication-autocomplete.js?v=rxterms-1';
 import './hospital-indemnity-documents.js';
-import './client-personal-underwriting.js';
+import './client-personal-underwriting.js?v=new-client-isolation-1';
 import './client-intake-sections.js?v=multi-county-1';
 import './campaign-stage-layout.js';
 import './campaign-call-placeholder.js';
@@ -40,4 +40,4 @@ import './lead-dob-format.js';
 import './leads-collapse.js';
 import './campaign-workflow-polish.js';
 import './campaign-title-dedupe.js';
-import './new-client-clean-close.js';
+import './new-client-clean-close.js?v=new-client-isolation-1';
