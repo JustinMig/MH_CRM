@@ -110,11 +110,10 @@ export function installAdminUsers(root, repository) {
     await loadUsers();
   }
 
-  const observer = new MutationObserver(() => { void mount(); });
-  observer.observe(root, { childList: true, subtree: true });
-  window.addEventListener('hashchange', () => setTimeout(() => void mount(), 0));
+  const onHashChange = () => setTimeout(() => void mount(), 0);
+  window.addEventListener('hashchange', onHashChange);
   void mount();
-  return () => observer.disconnect();
+  return () => window.removeEventListener('hashchange', onHashChange);
 }
 
 function escapeHtml(value) {
