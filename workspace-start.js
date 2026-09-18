@@ -1,12 +1,12 @@
 import { makeClientSearch } from './client-age-search.js';
 import { createCampaignRepository } from './campaigns-repository.js';
-import { createWorkspace } from './workspace.js?v=new-client-isolation-1';
-import { mhRepository, supabase } from './supabase-repository.js';
+import { createWorkspace } from './workspace.js?v=client-audit-1';
+import { mhRepository, supabase } from './supabase-repository.js?v=client-audit-1';
 import './username-user-access.js?v=1';
-import { installAdminUsers } from './admin-users.js';
+import { installAdminUsers } from './admin-users.js?v=client-audit-1';
 import { installPullToRefresh } from './pull-to-refresh.js';
 import { installDashboardCleanup } from './dashboard-cleanup.js';
-import { installAppointmentSingleAgent } from './appointment-ui.js';
+import { installAppointmentSingleAgent } from './appointment-ui.js?v=client-audit-1';
 import { installCarrierVault } from './carriers-ui.js';
 import { installMayerJustinCalendar } from './calendar-sync.js?v=justin-calendar-1';
 import { installClientAgeFilter } from './client-age-filter.js';
@@ -46,7 +46,7 @@ export async function startWorkspace() {
   document.body.dataset.singleAgent = String(mhRepository.agents.length <= 1);
   if (!location.hash || location.hash === '#/' || location.hash === '#') history.replaceState(null, '', '#/dashboard');
   if (['owner','admin'].includes(mhRepository.profile?.role)) installMayerJustinCalendar();
-  await import('./workspace-extensions.js?v=new-client-isolation-1');
+  await import('./workspace-extensions.js?v=client-audit-1');
   installClientDuplicateCheck();
   await import('./input-formatting.js?v=2');
   await import('./campaigns-smooth-load.js?v=1');
