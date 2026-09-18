@@ -203,5 +203,12 @@ export const mhRepository = {
     const rows = data || [];
     return { rows, total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0) };
   },
-  async getBuildChart() { return []; }
+  async listBuildCharts() {
+    const { listBuildCharts } = await import('./build-charts.js');
+    return listBuildCharts();
+  },
+  async getBuildChart(criteria = {}) {
+    const { lookupBuildChart } = await import('./build-charts.js');
+    return lookupBuildChart(criteria);
+  }
 };

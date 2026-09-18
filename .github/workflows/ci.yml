@@ -30,6 +30,8 @@ jobs:
         run: npm install --prefix /tmp/mig-browser --ignore-scripts --no-audit --no-fund playwright@1.55.0
       - name: Test call identity, recovery, layout and authenticated startup with synthetic data
         run: NODE_PATH=/tmp/mig-browser/node_modules node tests/browser-regressions.cjs
+      - name: Test Height and Weight carrier lookup, reset and stale responses
+        run: NODE_PATH=/tmp/mig-browser/node_modules node tests/build-chart-browser.cjs
       - name: Preserve synthetic test evidence
         if: always()
         uses: actions/upload-artifact@v4
