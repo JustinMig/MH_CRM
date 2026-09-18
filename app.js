@@ -98,7 +98,7 @@ async function openWorkspace() {
     document.head.append(sheet);
     try { await withTimeout(loaded); } catch (error) { sheet.remove(); throw error; }
   }
-  const { startWorkspace } = await withTimeout(import('./workspace-start.js?v=optimization-2'),20000);
+  const { startWorkspace } = await withTimeout(import('./workspace-start.js?v=repository-singleton-1'),20000);
   root.inert = true;
   try { await startWorkspace(); workspaceStarted = true; }
   finally { root.inert = false; }
