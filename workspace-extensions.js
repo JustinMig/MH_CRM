@@ -20,7 +20,6 @@ import './campaign-hide-duration.js';
 import './top-add-client.js';
 import './client-collapse.js';
 import './client-medicare-cleanup.js?v=client-audit-1';
-import './client-medicare-notes.js?v=client-audit-1';
 import './client-medicare-assets.js?v=client-audit-1';
 import './new-client-soa-actions.js';
 import './client-soa-compliance.js';
