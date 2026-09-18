@@ -305,8 +305,9 @@ async function flushIntake(dialog,clientId){
 
 const baseSaveClient=mhRepository.saveClient.bind(mhRepository);
 mhRepository.saveClient=async function saveClientWithMultipleIntakeFiles(record,...args){
+  const id=String(record?.id||'').trim();
+  const dialog=[...document.querySelectorAll('dialog.client-dialog')].reverse().find(item=>item.isConnected&&intakeStates.has(item)&&(id?item.dataset.clientId===id:(item.dataset.newClient==='true'&&!item.dataset.clientId)))||null;
   const saved=await baseSaveClient(record,...args); if(!saved?.id)return saved;
-  const dialog=[...document.querySelectorAll('dialog.client-dialog')].reverse().find(item=>item.isConnected&&intakeStates.has(item)&&(!item.dataset.clientId||item.dataset.clientId===saved.id));
   if(dialog)await flushIntake(dialog,saved.id);
   return saved;
 };
