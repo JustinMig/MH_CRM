@@ -156,7 +156,7 @@ export function createWorkspace(root, repository = disconnectedRepository) {
   }
   function openClient(id = null) {
     let record = {};
-    const d = dialogs.open({ title: 'Client Information', hint: id ? 'Edit this client without leaving your search results' : 'New client • all sections in one window', icon: icon('client', true), kind: 'client-dialog', body: '<p class="subtle">Loading client information…</p>', footer: saveFooter('Save Client'), onSave: async form => {
+    const d = dialogs.open({ title: 'Client Information', hint: id ? 'Edit this client without leaving your search results' : 'New client • all sections in one window', icon: icon('client', true), kind: 'client-dialog', clientId: id || null, isNewClient: !id, body: '<p class="subtle">Loading client information…</p>', footer: saveFooter('Save Client'), onSave: async form => {
       const saved = await repository.saveClient({ ...record, ...serializable(form) }, { expectedVersion: record.updated_at || null });
       if (!saved?.id) throw new Error('The save was not confirmed by the database. Your changes remain open.');
       record = saved;
