@@ -3,39 +3,7 @@ import { mhRepository, supabase } from './supabase-repository.js';
 const CARRIERS = ['Aetna', 'Humana', 'Cigna/Healthspring', 'Devoted', 'United Health Care'];
 const PLAN_TYPES = ['Supplement', 'Medicare Advantage'];
 const planTypeByClient = new Map();
-let pendingClientId = null;
-
-const baseGetClient = mhRepository.getClient.bind(mhRepository);
 const baseSaveClient = mhRepository.saveClient.bind(mhRepository);
-
-async function getLatestHealthPlan(clientId) {
-  const { data, error } = await supabase
-    .from('health_plans')
-    .select('id,plan_type')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data || null;
-}
-
-mhRepository.getClient = async function (id) {
-  const record = await baseGetClient(id);
-  if (!record) return record;
-
-  const [{ data: medicare, error: medicareError }, health] = await Promise.all([
-    supabase.from('medicare_details').select('medicaid_number').eq('client_id', id).maybeSingle(),
-    getLatestHealthPlan(id)
-  ]);
-  if (medicareError) throw medicareError;
-
-  return {
-    ...record,
-    medicaid_number: medicare?.medicaid_number || '',
-    health_plan_type: health?.plan_type || ''
-  };
-};
 
 mhRepository.saveClient = async function (record, ...args) {
   const originalId = record?.id || '';
@@ -115,8 +83,7 @@ async function enhanceDialog(dialog) {
   if (!panel || !medicaidNumber || !medicaidLevel || !healthCarrierInput) return;
 
   dialog.dataset.medicareCleanup = 'true';
-  const clientId = dialog.dataset.clientId || pendingClientId || '';
-  if (clientId) dialog.dataset.clientId = clientId;
+  const clientId = dialog.dataset.clientId || '';
 
   const medicareGroup = medicaidNumber.closest('details.field-group');
   if (medicareGroup && !panel.querySelector('[data-medicaid-group]')) {
@@ -163,13 +130,6 @@ async function enhanceDialog(dialog) {
     typeSelect.addEventListener('change', () => planTypeByClient.set(key, typeSelect.value));
   }
 }
-
-document.addEventListener('click', event => {
-  const existing = event.target.closest?.('[data-client-id]');
-  const add = event.target.closest?.('[data-add-client]');
-  if (existing) pendingClientId = existing.dataset.clientId || null;
-  else if (add) pendingClientId = null;
-}, true);
 
 const observer = new MutationObserver(mutations => {
   for (const mutation of mutations) {
