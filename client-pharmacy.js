@@ -20,8 +20,6 @@ const ALLOWED = new Set([
 
 const pharmacyCache = new Map();
 const dialogStates = new WeakMap();
-let pendingClientId = null;
-
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
 }[c]));
@@ -372,17 +370,9 @@ mhRepository.saveClient = async function saveClientWithPharmacy(record, ...args)
   return saved;
 };
 
-document.addEventListener('click', event => {
-  const existing = event.target.closest?.('[data-client-id]');
-  const add = event.target.closest?.('[data-add-client]');
-  if (existing) pendingClientId = existing.dataset.clientId || null;
-  else if (add) pendingClientId = null;
-}, true);
-
 const originalOpen = Dialogs.prototype.open;
 Dialogs.prototype.open = function patchedPharmacyOpen(options = {}) {
-  const clientId = options.kind === 'client-dialog' ? pendingClientId : null;
-  if (options.kind === 'client-dialog') pendingClientId = null;
+  const clientId = options.kind === 'client-dialog' ? String(options.clientId || '') || null : null;
   const controller = originalOpen.call(this, options);
   if (options.kind !== 'client-dialog') return controller;
   const previousAttachForm = controller.attachForm.bind(controller);
