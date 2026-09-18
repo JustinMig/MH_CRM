@@ -1,7 +1,7 @@
 import { makeClientSearch } from './client-age-search.js';
 import { createCampaignRepository } from './campaigns-repository.js';
 import { createWorkspace } from './workspace.js?v=optimization-2';
-import { mhRepository, supabase } from './supabase-repository.js?v=optimization-2';
+import { mhRepository, supabase } from './supabase-repository.js';
 import './username-user-access.js?v=1';
 import { installAdminUsers } from './admin-users.js?v=optimization-2';
 import { installPullToRefresh } from './pull-to-refresh.js';
