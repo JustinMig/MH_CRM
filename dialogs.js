@@ -10,7 +10,7 @@ export class Dialogs {
     };
     window.addEventListener('beforeunload', this.beforeUnload);
   }
-  open({ title, hint = '', icon = '', kind = '', body = '', footer = '', onSave = null }) {
+  open({ title, hint = '', icon = '', kind = '', clientId = null, isNewClient = false, body = '', footer = '', onSave = null }) {
     const manager = this;
     const node = document.createElement('dialog');
     const id = `mh-dialog-${++this.sequence}`;
@@ -18,6 +18,10 @@ export class Dialogs {
     const returnAttribute = ['data-tool', 'data-client-id', 'data-day', 'data-add-client', 'data-new-appointment'].find(key => invoker?.hasAttribute?.(key));
     const returnSelector = returnAttribute ? `[${returnAttribute}="${CSS.escape(invoker.getAttribute(returnAttribute))}"]` : null;
     node.className = `workspace-dialog ${kind}`;
+    if (kind === 'client-dialog') {
+      if (clientId) node.dataset.clientId = String(clientId);
+      if (isNewClient) node.dataset.newClient = 'true';
+    }
     node.setAttribute('aria-labelledby', `${id}-title`);
     node.setAttribute('aria-modal', 'true');
     node.innerHTML = `<div class="modal-frame"><header class="modal-head"><div class="modal-title">${icon}<div><h2 id="${id}-title" tabindex="-1">${esc(title)}</h2>${hint ? `<p>${esc(hint)}</p>` : ''}</div></div><button type="button" class="modal-close" data-close aria-label="Close ${esc(title)}">×</button></header><div class="modal-body">${body}</div>${footer ? `<footer class="modal-footer">${footer}</footer>` : ''}<div class="modal-error" role="alert" tabindex="-1" hidden></div></div>`;
