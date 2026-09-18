@@ -135,7 +135,7 @@ export const mhRepository = {
 
     if ('license_number' in record) await saveEncryptedLicense(client.id, record.license_number);
 
-    const { error: medErr } = await supabase.from('medicare_details').upsert({ client_id: client.id, part_a_date: clean(record.part_a_date), part_b_date: clean(record.part_b_date), medicaid_level: clean(record.medicaid_level) }, { onConflict: 'client_id' });
+    const { error: medErr } = await supabase.from('medicare_details').upsert({ client_id: client.id, part_a_date: clean(record.part_a_date), part_b_date: clean(record.part_b_date), medicaid_level: clean(record.medicaid_level), notes: clean(record.medicare_notes) }, { onConflict: 'client_id' });
     if (medErr) throw medErr;
 
     let health = null;
