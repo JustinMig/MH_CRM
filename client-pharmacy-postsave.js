@@ -92,9 +92,10 @@ async function activate(form,clientId){
 
 const baseSave=mhRepository.saveClient.bind(mhRepository);
 mhRepository.saveClient=async function saveClientWithPostsavePharmacy(record,...args){
-  const form=[...document.querySelectorAll('dialog.client-dialog form.client-form')].reverse().find(item=>item.isConnected)||null;
-  const wasNew=!String(record?.id||'').trim()&&!String(form?.elements.namedItem('id')?.value||'').trim();
+  const wasNew=!String(record?.id||'').trim();
+  const dialog=wasNew?[...document.querySelectorAll('dialog.client-dialog[data-new-client="true"]')].reverse().find(item=>item.isConnected&&!item.dataset.clientId)||null:null;
+  const form=dialog?.querySelector('form.client-form')||null;
   const saved=await baseSave(record,...args);
-  if(saved?.id&&wasNew&&form)await activate(form,saved.id);
+  if(saved?.id&&wasNew&&form){dialog.dataset.clientId=saved.id;await activate(form,saved.id);}
   return saved;
 };
