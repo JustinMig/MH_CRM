@@ -85,21 +85,21 @@ export const mhRepository = {
   },
 
   async getClient(id) {
-    const client = await one(supabase.from('clients').select('*').eq('id', id));
-    if (!client) return null;
-    const [medicare, health, life, retirement] = await Promise.all([
+    const [client, medicare, health, life, retirement] = await Promise.all([
+      one(supabase.from('clients').select('*').eq('id', id)),
       one(supabase.from('medicare_details').select('*').eq('client_id', id)),
       one(supabase.from('health_plans').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
       one(supabase.from('life_policies').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)),
       one(supabase.from('retirement_accounts').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1))
     ]);
+    if (!client) return null;
     const p = client.products || [];
     return {
       ...client, address: client.address1 || '', zip: client.zip_code || '', spouse: client.spouse || '', notes: client.notes || '',
       license_number: client.drivers_license_number || '', license_expiration: client.drivers_license_expiration || '', license_state: client.drivers_license_state || '',
       product_medicare: p.includes('medicare'), product_life: p.includes('life'), product_retirement: p.includes('retirement'),
-      part_a_date: medicare?.part_a_date || '', part_b_date: medicare?.part_b_date || '', medicaid_level: medicare?.medicaid_level || '', _medicare_id: medicare?.client_id || null,
-      health_carrier: health?.carrier || '', health_plan_id: health?.plan_id || '', health_member_id: health?.member_id || '', health_effective_date: health?.effective_date || '', health_premium: health?.premium ?? '', _health_id: health?.id || null,
+      part_a_date: medicare?.part_a_date || '', part_b_date: medicare?.part_b_date || '', medicaid_level: medicare?.medicaid_level || '', medicaid_number: medicare?.medicaid_number || '', medicare_notes: medicare?.notes || '', _medicare_id: medicare?.client_id || null,
+      health_carrier: health?.carrier || '', health_plan_id: health?.plan_id || '', health_member_id: health?.member_id || '', health_effective_date: health?.effective_date || '', health_premium: health?.premium ?? '', health_plan_type: health?.plan_type || '', _health_id: health?.id || null,
       life_carrier: life?.carrier || '', life_product: life?.product || life?.policy_type || '', life_policy_number: life?.policy_number || '', life_face_amount: life?.face_amount ?? '', life_premium: life?.premium ?? '', life_frequency: life?.premium_mode || '', life_effective_date: life?.effective_date || '', life_notes: life?.notes || '', _life_id: life?.id || null,
       retirement_carrier: retirement?.carrier || '', retirement_product: retirement?.product || '', retirement_contract: retirement?.contract_number || '', retirement_effective_date: retirement?.effective_date || '', retirement_contribution: retirement?.contribution_amount ?? '', retirement_value: retirement?.account_value ?? '', retirement_notes: retirement?.notes || '', _retirement_id: retirement?.id || null
     };
