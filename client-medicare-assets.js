@@ -12,8 +12,6 @@ const PRODUCT_OPTIONS = [
   'Other Medicare-related health products'
 ];
 
-let pendingClientId = null;
-
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeName = value => String(value || 'document').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || 'document';
 const today = () => new Date().toISOString().slice(0, 10);
@@ -370,7 +368,7 @@ function bindMedicareAssets(dialog) {
   if (!(dialog instanceof HTMLDialogElement) || !dialog.classList.contains('client-dialog')) return;
   const panel=dialog.querySelector('[data-panel="medicare"]');
   if (!panel) return;
-  const clientId=dialog.dataset.clientId || pendingClientId || '';
+  const clientId=dialog.dataset.clientId || '';
   if (!clientId) {
     if (!panel.querySelector('[data-assets-new-client]')) {
       const health=groupBySummary(panel,'Health Plan Information');
@@ -384,12 +382,6 @@ function bindMedicareAssets(dialog) {
   bindCardManager(groupBySummary(panel,'Health Plan Information'),clientId,'health_plan_card','Health Plan Card');
   bindSoaGroup(panel,clientId);
 }
-
-document.addEventListener('click',event=>{
-  const existing=event.target.closest?.('[data-client-id]');
-  const add=event.target.closest?.('[data-add-client]');
-  if(existing) pendingClientId=existing.dataset.clientId||null; else if(add) pendingClientId=null;
-},true);
 
 const observer=new MutationObserver(mutations=>{
   for(const mutation of mutations){
