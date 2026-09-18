@@ -77,3 +77,13 @@ test('New Client toolbar observer disconnects after installation', async () => {
   const source = await read('top-add-client.js');
   assert.match(source, /if \(ensureTopAddClient\(\)\) observer\.disconnect\(\)/);
 });
+
+
+test('authenticated startup does not load the same module twice under different query strings', async () => {
+  const [start, extensions] = await Promise.all([read('workspace-start.js'), read('workspace-extensions.js')]);
+  const specifiers = [...start.matchAll(/(?:from\s+|import\()(['"])(\.\/[^'"]+\.js(?:\?[^'"]*)?)\1/g)].map(match => match[2])
+    .concat([...extensions.matchAll(/import\s+(['"])(\.\/[^'"]+\.js(?:\?[^'"]*)?)\1/g)].map(match => match[2]));
+  const baseNames = specifiers.map(value => value.split('?')[0]);
+  const duplicates = baseNames.filter((value, index) => baseNames.indexOf(value) !== index);
+  assert.deepEqual([...new Set(duplicates)], []);
+});
