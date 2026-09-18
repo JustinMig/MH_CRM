@@ -3,7 +3,6 @@ import { esc, dateText } from './core.js';
 import { mhRepository, supabase } from './supabase-repository.js';
 
 const cache = new Map();
-let pendingClientId = null;
 const clean = v => v === '' || v === undefined || v === null ? null : v;
 const money = v => v === '' || v === undefined || v === null ? null : Number(v);
 
@@ -211,14 +210,9 @@ mhRepository.saveClient = async function saveClientWithHealthTabs(record, ...arg
   return { ...saved, _doctors:savedDoctors, _medications:savedMedications, _hospital_indemnity:savedIndemnity };
 };
 
-document.addEventListener('click', event => {
-  const existing = event.target.closest?.('[data-client-id]'), add = event.target.closest?.('[data-add-client]');
-  if (existing) pendingClientId = existing.dataset.clientId || null; else if (add) pendingClientId = null;
-}, true);
 const originalOpen = Dialogs.prototype.open;
 Dialogs.prototype.open = function patchedHealthTabsOpen(options = {}) {
-  const clientId = options.kind === 'client-dialog' ? pendingClientId : null;
-  if (options.kind === 'client-dialog') pendingClientId = null;
+  const clientId = options.kind === 'client-dialog' ? String(options.clientId || '') || null : null;
   const controller = originalOpen.call(this, options); if (options.kind !== 'client-dialog') return controller;
   const previousAttach = controller.attachForm.bind(controller);
   controller.attachForm = form => { const extra = clientId ? (cache.get(clientId) || {}) : {}; render(form, extra); previousAttach(form); };
