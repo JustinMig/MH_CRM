@@ -1,21 +1,6 @@
 import { mhRepository, supabase } from './supabase-repository.js';
 
-const baseGetClient = mhRepository.getClient.bind(mhRepository);
 const baseSaveClient = mhRepository.saveClient.bind(mhRepository);
-
-mhRepository.getClient = async function (id) {
-  const record = await baseGetClient(id);
-  if (!record) return record;
-
-  const { data, error } = await supabase
-    .from('medicare_details')
-    .select('notes')
-    .eq('client_id', id)
-    .maybeSingle();
-  if (error) throw error;
-
-  return { ...record, medicare_notes: data?.notes || '' };
-};
 
 mhRepository.saveClient = async function (record, ...args) {
   const saved = await baseSaveClient(record, ...args);
