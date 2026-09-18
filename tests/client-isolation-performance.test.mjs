@@ -87,3 +87,10 @@ test('authenticated startup does not load the same module twice under different 
   const duplicates = baseNames.filter((value, index) => baseNames.indexOf(value) !== index);
   assert.deepEqual([...new Set(duplicates)], []);
 });
+
+
+test('shared Supabase repository is imported as one singleton URL', async () => {
+  const start = await read('workspace-start.js');
+  assert.match(start, /from '\.\/supabase-repository\.js'/);
+  assert.doesNotMatch(start, /supabase-repository\.js\?/);
+});
