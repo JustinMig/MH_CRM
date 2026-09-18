@@ -184,12 +184,13 @@ const indemnityKeys = ['id','carrier','plan_name','policy_number','member_id','e
 
 const baseGet = mhRepository.getClient.bind(mhRepository);
 mhRepository.getClient = async function getClientWithHealthTabs(id) {
-  const base = await baseGet(id); if (!base) return base;
-  const [d,m,h] = await Promise.all([
+  const [base,d,m,h] = await Promise.all([
+    baseGet(id),
     supabase.from('client_doctors').select('*').eq('client_id',id).order('created_at'),
     supabase.from('client_medications').select('*').eq('client_id',id).order('created_at'),
     supabase.from('hospital_indemnity_plans').select('*').eq('client_id',id).order('created_at')
   ]);
+  if (!base) return base;
   if (d.error) throw d.error; if (m.error) throw m.error; if (h.error) throw h.error;
   const extra = { doctors:d.data||[], medications:m.data||[], hospital_indemnity:h.data||[] };
   cache.set(id, extra);
