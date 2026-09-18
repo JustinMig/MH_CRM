@@ -67,6 +67,8 @@ export function installAppointmentSingleAgent(root, repository) {
   };
 
   scan();
+  // Appointment dialogs are appended directly to body with their form already rendered.
+  // Watching the whole document subtree caused this scan to run for unrelated client-form changes.
   const observer = new MutationObserver(scan);
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true });
 }
