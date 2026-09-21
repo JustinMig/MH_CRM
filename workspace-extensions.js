@@ -32,7 +32,7 @@ import './client-imported-documents.js';
 import './client-summary-commissions.js';
 import './life-commission-filters.js';
 import './commission-icon-screen.js';
-import './leads-icon-screen.js';
+import './leads-icon-screen.js?v=lead-dob-direct-1';
 import './lead-dob-format.js';
 import './leads-collapse.js';
 import './campaign-workflow-polish.js';
