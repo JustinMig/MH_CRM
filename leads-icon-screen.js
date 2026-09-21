@@ -17,6 +17,14 @@ const formatDate = value => {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[2]}/${match[3]}/${match[1]}` : '';
 };
+const formatLeadDobTyping = value => {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 1) return digits;
+  if (digits.length === 2) return `${digits}/`;
+  if (digits.length <= 3) return `${digits.slice(0,2)}/${digits.slice(2)}`;
+  if (digits.length === 4) return `${digits.slice(0,2)}/${digits.slice(2,4)}/`;
+  return `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`;
+};
 const parseManualDate = value => {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -249,6 +257,11 @@ function openLeadEditor(lead, refresh) {
   });
   const form = editor.node.querySelector('form');
   editor.attachForm(form);
+  const dob = form.elements.namedItem('date_of_birth');
+  dob?.addEventListener('input', () => {
+    const formatted = formatLeadDobTyping(dob.value);
+    if (dob.value !== formatted) dob.value = formatted;
+  });
   const phone = form.elements.namedItem('phone');
   phone?.addEventListener('input', () => { phone.value = formatPhone(phone.value); });
 }
