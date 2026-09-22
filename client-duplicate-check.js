@@ -22,7 +22,7 @@ function duplicateMessage(rows) {
     return `${index + 1}. ${name}\nDOB: ${formatDate(row.date_of_birth)}\nPhone: ${row.phone || 'Not entered'}\nMatched: ${matchLabels(row)}`;
   }).join('\n\n');
   const extra = rows.length > 3 ? `\n\n+ ${rows.length - 3} more possible match${rows.length - 3 === 1 ? '' : 'es'}.` : '';
-  return `Possible duplicate client found.\n\n${shown}${extra}\n\nThis new client was NOT saved. Review the existing client before trying again.`;
+  return `Possible duplicate client found.\n\n${shown}${extra}\n\nPress OK to SAVE THIS CLIENT ANYWAY, or Cancel to go back and review the existing client.`;
 }
 
 export function installClientDuplicateCheck() {
@@ -47,8 +47,10 @@ export function installClientDuplicateCheck() {
         if (error) throw error;
         const matches = Array.isArray(data) ? data : [];
         if (matches.length) {
-          window.alert(duplicateMessage(matches));
-          throw new Error('Possible duplicate client found. The new client was not saved.');
+          const saveAnyway = window.confirm(duplicateMessage(matches));
+          if (!saveAnyway) {
+            throw new Error('Possible duplicate client found. Save was canceled.');
+          }
         }
       }
     }
