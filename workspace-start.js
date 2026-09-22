@@ -13,7 +13,7 @@ import { installClientAgeFilter } from './client-age-filter.js';
 import { installClientDelete } from './client-delete.js';
 import { installSimpleDashboardNote } from './dashboard-note-simple.js';
 import { installClientDateAndDragDrop } from './client-date-dragdrop.js';
-import { installClientDuplicateCheck } from './client-duplicate-check.js?v=1';
+import { installClientDuplicateCheck } from './client-duplicate-check.js?v=duplicate-override-1';
 import { installFastNavigation } from './navigation-speed.js?v=2';
 
 const root = document.querySelector('#app');
