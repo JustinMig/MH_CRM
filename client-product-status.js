@@ -31,13 +31,21 @@ function enhanceClientForm(form, currentStatus = '') {
   const productChecks = Array.from(products.querySelectorAll('input[type="checkbox"][name^="product_"]'));
   if (deceased) deceased.checked = currentStatus === 'deceased';
 
-  deceased?.addEventListener('change', () => {
-    if (!deceased.checked) return;
+  const clearProductsForDeceased = () => {
+    if (!deceased?.checked) return;
     productChecks.forEach(input => {
-      if (!input.checked) return;
-      input.checked = false;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
+      if (input.checked) {
+        input.checked = false;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     });
+  };
+
+  // A deceased client must never retain active product selections.
+  clearProductsForDeceased();
+
+  deceased?.addEventListener('change', () => {
+    clearProductsForDeceased();
   });
 
   productChecks.forEach(input => input.addEventListener('change', () => {
@@ -82,27 +90,62 @@ mhRepository.getClient = async function patchedGetClient(id) {
 const baseSaveClient = mhRepository.saveClient.bind(mhRepository);
 mhRepository.saveClient = async function patchedSaveClient(record, ...args) {
   const originalStatus = String(record?.status || 'active').toLowerCase();
-  const saved = await baseSaveClient(record, ...args);
+  const deceased = record?.deceased === true;
+
+  // Never allow stale product flags from the previously saved client record
+  // to survive a Deceased save.
+  const normalizedRecord = deceased
+    ? {
+        ...record,
+        product_medicare: false,
+        product_life: false,
+        product_retirement: false
+      }
+    : record;
+
+  const saved = await baseSaveClient(normalizedRecord, ...args);
   if (!saved?.id) return saved;
 
   let status;
-  if (record?.deceased) status = 'deceased';
+  if (deceased) status = 'deceased';
   else if (originalStatus === 'deceased') status = 'active';
   else if (['active','inactive','prospect'].includes(originalStatus)) status = originalStatus;
   else status = saved.status || 'active';
 
-  if (saved.status !== status) {
+  // Update status and products together for deceased clients so the database
+  // cannot retain an old Medicare/Life/Retirement selection.
+  const mustUpdateProducts = deceased && Array.isArray(saved.products) && saved.products.length > 0;
+  if (saved.status !== status || mustUpdateProducts) {
+    const updates = { status };
+    if (deceased) updates.products = [];
+
     const { data, error } = await supabase
       .from('clients')
-      .update({ status })
+      .update(updates)
       .eq('id', saved.id)
-      .select('id,status,updated_at')
+      .select('id,status,products,updated_at')
       .single();
     if (error) throw error;
     statusCache.set(saved.id, data.status || status);
-    return { ...saved, ...data, deceased: data.status === 'deceased' };
+    return {
+      ...saved,
+      ...data,
+      deceased: data.status === 'deceased',
+      product_medicare: false,
+      product_life: false,
+      product_retirement: false
+    };
   }
 
   statusCache.set(saved.id, status);
-  return { ...saved, deceased: status === 'deceased' };
+  return {
+    ...saved,
+    deceased: status === 'deceased',
+    ...(deceased ? {
+      products: [],
+      product_medicare: false,
+      product_life: false,
+      product_retirement: false
+    } : {})
+  };
 };
