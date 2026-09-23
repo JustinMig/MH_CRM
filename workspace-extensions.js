@@ -1,5 +1,5 @@
 // Loaded only after authentication. Bundled into a single deferred feature chunk.
-import './client-product-status.js';
+import './client-product-status.js?v=deceased-products-2';
 import './medicare-gov-credentials.js?v=new-client-isolation-1';
 import './banking-information.js?v=new-client-isolation-1';
 import './life-multiple-policies.js?v=new-client-isolation-1';
