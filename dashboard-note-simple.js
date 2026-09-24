@@ -21,6 +21,9 @@ export function installSimpleDashboardNote(root) {
     .saved-note-card summary strong{font-size:14px;overflow-wrap:anywhere}
     .saved-note-card summary small{flex:none;color:#718493;font-size:10px}
     .saved-note-body{padding:0 14px 14px;border-top:1px solid #e2e8ed;color:#425d70;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55}
+    .saved-note-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 12px;border-top:1px solid #edf1f4}
+    .saved-note-meta span{font-size:11px;color:#718493}
+    .saved-note-meta .btn{min-height:32px;padding:6px 10px;font-size:11px}
     .saved-note-empty{padding:28px 15px;text-align:center;color:#718493;border:1px dashed #c9d5dd;border-radius:10px;background:#f6f9fa}
     @media(max-width:620px){.simple-note-dialog{width:calc(100vw - 16px);height:calc(100dvh - 16px)}.simple-note-editor textarea{min-height:220px}.saved-note-card summary{align-items:flex-start;flex-direction:column;gap:3px}}
   `;
@@ -101,17 +104,18 @@ export function installSimpleDashboardNote(root) {
         if (!userId) throw new Error('Your session expired. Please sign in again.');
         const { data, error } = await supabase
           .from('client_notes')
-          .select('id,title,body,created_at,updated_at')
+          .select('id,title,body,author_id,created_at,updated_at')
           .is('client_id', null)
-          .eq('author_id', userId)
           .order('updated_at', { ascending: false });
         if (error) throw error;
         const notes = data || [];
         savedStatus.textContent = notes.length ? `${notes.length} saved note${notes.length === 1 ? '' : 's'}` : '';
+        const names = new Map((mhRepository.agents || []).map(agent => [agent.id, agent.full_name || 'Team member']));
         savedList.innerHTML = notes.length ? notes.map(note => {
           const when = note.updated_at || note.created_at;
           const date = when ? new Date(when).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' }) : '';
-          return `<details class="saved-note-card"><summary><strong>${esc(note.title || 'Untitled Note')}</strong><small>${esc(date)}</small></summary><div class="saved-note-body">${esc(note.body || '')}</div></details>`;
+          const author = note.author_id === userId ? 'You' : (names.get(note.author_id) || 'Team member');
+          return `<details class="saved-note-card" data-saved-note-id="${esc(note.id)}"><summary><strong>${esc(note.title || 'Untitled Note')}</strong><small>${esc(date)}</small></summary><div class="saved-note-body">${esc(note.body || '')}</div><div class="saved-note-meta"><span>Created by ${esc(author)}</span><button type="button" class="btn danger" data-delete-saved-note>Delete</button></div></details>`;
         }).join('') : '<div class="saved-note-empty">No saved notes yet.</div>';
       } catch (error) {
         savedStatus.textContent = error?.message || 'Saved notes could not load.';
@@ -134,6 +138,27 @@ export function installSimpleDashboardNote(root) {
 
     title.addEventListener('input', syncDirty);
     area.addEventListener('input', syncDirty);
+    savedList.addEventListener('click', async event => {
+      const button = event.target.closest?.('[data-delete-saved-note]');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const card = button.closest('[data-saved-note-id]');
+      const noteId = card?.dataset.savedNoteId;
+      if (!noteId || !confirm('Delete this note? This cannot be undone.')) return;
+      button.disabled = true;
+      savedStatus.textContent = 'Deleting note…';
+      try {
+        const { error } = await supabase.from('client_notes').delete().eq('id', noteId).is('client_id', null);
+        if (error) throw error;
+        loadingSaved = false;
+        await loadSavedNotes();
+      } catch (error) {
+        button.disabled = false;
+        savedStatus.textContent = error?.message || 'Unable to delete this note.';
+      }
+    });
+
     dialog.querySelectorAll('[data-note-tab]').forEach(button => button.addEventListener('click', () => chooseTab(button.dataset.noteTab)));
     dialog.querySelectorAll('[data-note-close]').forEach(button => button.addEventListener('click', () => {
       if (currentTab === 'new' && isDirty() && !confirm('Close without saving this note?')) return;
