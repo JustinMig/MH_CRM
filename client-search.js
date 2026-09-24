@@ -48,13 +48,18 @@ export function makeClientSearch(db, { now = () => new Date() } = {}) {
     let q = db.from('client_search_results').select(CLIENT_RESULT_FIELDS);
     const term = String(query).replace(/[%_*]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
     if (term) {
-      // Quoted PostgREST values keep commas/parentheses/apostrophes in names safe.
-      const pattern = JSON.stringify(`%${term}%`);
       const columns = ['full_name', 'first_name', 'last_name', 'phone', 'email', 'address1', 'city', 'county', 'state'];
-      const clauses = columns.map(column => `${column}.ilike.${pattern}`);
       const digits = term.replace(/\D/g, '');
-      if (digits.length >= 3 && /^[\d\s()+.\-]+$/.test(term)) clauses.push(`phone_digits.ilike.${JSON.stringify(`%${digits}%`)}`);
-      q = q.or(clauses.join(','));
+      const isPhoneLike = digits.length >= 3 && /^[\d\s()+.\-]+$/.test(term);
+
+      if (isPhoneLike) {
+        q = q.or(`phone.ilike.${JSON.stringify(`%${term}%`)},phone_digits.ilike.${JSON.stringify(`%${digits}%`)}`);
+      } else {
+        for (const token of term.split(' ').filter(Boolean)) {
+          const pattern = JSON.stringify(`%${token}%`);
+          q = q.or(columns.map(column => `${column}.ilike.${pattern}`).join(','));
+        }
+      }
     }
     const selectedProduct = String(product).trim().toLowerCase();
     if (selectedProduct === 't65' || selectedProduct === '65plus') {
